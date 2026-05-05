@@ -5,7 +5,6 @@ interface LogoProps {
   size?: number;
   showText?: boolean;
   textColor?: string;
-  eyebrowColor?: string;
   variant?: 'default' | 'compact';
 }
 
@@ -14,7 +13,6 @@ export const Logo: React.FC<LogoProps> = ({
   size = 40, 
   showText = true,
   textColor = "text-slate-950",
-  eyebrowColor = "text-[#5B45FF]",
   variant = 'default'
 }) => {
   const brandMark = (
@@ -48,10 +46,7 @@ export const Logo: React.FC<LogoProps> = ({
     <div className={`flex items-center gap-3 ${className}`}>
       {brandMark}
       {showText && (
-        <div>
-          <p className={`text-[10px] font-bold uppercase tracking-[0.28em] ${eyebrowColor}`}>Business suite</p>
-          <p className={`text-xl font-black tracking-tight ${textColor}`}>WhatsApp Business</p>
-        </div>
+        <p className={`text-xl font-black tracking-tight ${textColor}`}>WhatsApp Business</p>
       )}
     </div>
   );

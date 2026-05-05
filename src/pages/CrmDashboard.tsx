@@ -16,7 +16,6 @@ import {
   LayoutDashboard,
   Mail,
   Menu,
-  MessageSquare,
   Phone,
   Plus,
   RefreshCw,
@@ -33,6 +32,10 @@ import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import { buildBackendUrl } from '../lib/backend';
 import { cn } from '../lib/utils';
 import Papa from 'papaparse';
+
+function WabaIcon({ size = 16 }: { size?: number }) {
+  return <img src="/waba.svg" alt="" width={size} height={size} className="object-contain" />;
+}
 import { whatsappService } from '../services/whatsappService';
 import { Logo } from '../components/Logo';
 
@@ -2101,7 +2104,7 @@ export default function CrmDashboard() {
                           <td className="rounded-r-[1.3rem] border-y border-r border-[#DBEAFE] bg-white px-4 py-4 align-top">
                             <div className="flex flex-wrap gap-2">
                               <LeadActionButton icon={Edit3} label="Edit" onClick={() => openLeadForm('edit', lead)} />
-                              <LeadActionButton icon={MessageSquare} label="Update" onClick={() => {
+                              <LeadActionButton icon={WabaIcon} label="Update" onClick={() => {
                                 setActiveLeadForRemark(lead);
                                 setNewRemark('');
                               }} />

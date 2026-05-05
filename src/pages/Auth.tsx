@@ -67,21 +67,21 @@ export default function Auth() {
   };
 
   return (
-    <div className="page-frame app-safe-screen grid overflow-hidden bg-white text-black lg:grid-cols-[57%_43%]">
+    <div className="page-frame app-safe-screen grid overflow-hidden bg-white text-black [zoom:0.9] lg:grid-cols-[57%_43%]">
       <section className="relative hidden min-h-screen overflow-hidden border-r border-[#dadde1] px-12 py-14 lg:flex lg:flex-col">
         <img src="/waba.svg" alt="WhatsApp Business" className="h-20 w-20 object-contain" />
 
-        <div className="pointer-events-none absolute right-10 top-16 h-[45rem] w-[42rem] max-w-[58vw]">
+        <div className="pointer-events-none absolute right-8 top-14 h-[42rem] w-[38rem] max-w-[48vw] xl:right-14 xl:h-[45rem] xl:w-[42rem]">
           <img src={AUTH_HERO_IMAGE} alt="" className="h-full w-full object-contain" />
         </div>
 
-        <div className="relative z-10 mt-auto max-w-[28rem] pb-20">
-          <h1 className="[font-family:var(--font-body)] text-[4.6rem] font-black leading-[1.05] tracking-normal text-[#0b0b0f] xl:text-[5.3rem]">
-            Do More
+        <div className="relative z-10 mt-auto max-w-[23rem] pb-20 xl:max-w-[26rem]">
+          <h1 className="[font-family:var(--font-body)] text-[4.1rem] font-black leading-[1.05] tracking-normal text-[#0b0b0f] xl:text-[4.8rem]">
+            Do more
             <br />
             with
             <br />
-            <span className="text-[#0866ff]">Conversations/</span>
+            <span className="text-[#0866ff]">Conversations.</span>
           </h1>
         </div>
       </section>
@@ -99,7 +99,7 @@ export default function Auth() {
         >
           <div className="mb-10 block lg:hidden">
             <h2 className="[font-family:var(--font-body)] text-5xl font-black leading-tight tracking-normal text-[#0b0b0f]">
-              Do More with <span className="text-[#0866ff]">Conversations/</span>
+              Do more with <span className="text-[#0866ff]">Conversations.</span>
             </h2>
           </div>
 

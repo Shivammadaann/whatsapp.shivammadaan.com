@@ -97,7 +97,6 @@ export default function App() {
         <div className="flex flex-col items-center gap-6">
           <Logo size={80} showText={false} />
           <div className="flex flex-col items-center gap-2 text-center">
-            <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#5B45FF]">Business Suite</p>
             <h1 className="text-2xl font-black tracking-tighter text-slate-950">WhatsApp Business</h1>
             <div className="mt-2 flex gap-1.5">
               <div className="w-2 h-2 rounded-full bg-[#5B45FF] animate-bounce" style={{ animationDelay: '0ms' }} />

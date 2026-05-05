@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useScroll, useSpring } from 'motion/react';
 import {
-  MessageSquare,
   Mail,
   BarChart3,
   Settings,
@@ -43,6 +42,10 @@ import { Logo } from '../components/Logo';
 const WHATSAPP_ICON_URL = 'https://upload.wikimedia.org/wikipedia/commons/1/19/WhatsApp_logo-color-vertical.svg';
 const INSTAGRAM_ICON_URL = 'https://upload.wikimedia.org/wikipedia/commons/9/95/Instagram_logo_2022.svg';
 const MESSENGER_ICON_URL = 'https://upload.wikimedia.org/wikipedia/commons/6/63/Facebook_Messenger_logo_2025.svg';
+
+function WabaIcon({ size = 18 }: { size?: number }) {
+  return <img src="/waba.svg" alt="" width={size} height={size} className="object-contain" />;
+}
 
 function BrandImageIcon({ src, alt, size = 18 }: { src: string; alt: string; size?: number }) {
   return (
@@ -931,7 +934,7 @@ export default function ProductDashboard() {
                 <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#5B45FF]">How access works</p>
                 <div className="mt-4 space-y-3">
                   <InfoLine icon={Lock} title="Pay per service" copy="If you subscribe to only one tool, only that tool becomes available in the dashboard." />
-                  <InfoLine icon={MessageSquare} title="Start with WhatsApp only" copy="You can take just WhatsApp Business Inbox now and add CRM or other services later." />
+                  <InfoLine icon={WabaIcon} title="Start with WhatsApp only" copy="You can take just WhatsApp Business Inbox now and add CRM or other services later." />
                   <InfoLine icon={Globe} title="Expand when ready" copy="Every add-on can be unlocked later with a separate payment flow." />
                 </div>
               </div>

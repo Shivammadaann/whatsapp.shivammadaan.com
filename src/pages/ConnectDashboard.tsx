@@ -16,7 +16,6 @@ import {
   Settings, 
   Moon, 
   Sun, 
-  MessageSquare, 
   Instagram,
   Users,
   LogOut,
@@ -95,6 +94,10 @@ import defaultConversationProfile from '../../Default Profile.png';
 const WHATSAPP_ICON_URL = 'https://upload.wikimedia.org/wikipedia/commons/1/19/WhatsApp_logo-color-vertical.svg';
 const INSTAGRAM_ICON_URL = 'https://upload.wikimedia.org/wikipedia/commons/9/95/Instagram_logo_2022.svg';
 const MESSENGER_ICON_URL = 'https://upload.wikimedia.org/wikipedia/commons/6/63/Facebook_Messenger_logo_2025.svg';
+
+const WabaIcon = ({ className = "" }: { className?: string }) => (
+  <img src="/waba.svg" alt="" className={cn("object-contain", className)} />
+);
 const CALL_ICE_GATHERING_TIMEOUT_MS = 12000;
 
 function BrandImageIcon({ src, alt, size = 18 }: { src: string; alt: string; size?: number }) {
@@ -3569,7 +3572,7 @@ function OnboardingSection({ isDark, handleLogout }: { isDark: boolean, handleLo
       <header className="app-header-card mx-4 mt-4 flex min-h-[4.5rem] items-center justify-between gap-3 px-5 py-3 md:mx-6 md:px-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-white/16 rounded-xl flex items-center justify-center">
-            <MessageSquare className="text-white" size={24} />
+            <WabaIcon className="h-6 w-6" />
           </div>
           <h1 className="app-header-title font-bold tracking-tight">Connect WhatsApp Business Account.</h1>
         </div>
@@ -3590,7 +3593,7 @@ function OnboardingSection({ isDark, handleLogout }: { isDark: boolean, handleLo
           {tab === 'options' ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 text-center">
               <div className="w-20 h-20 bg-[#5B45FF]0/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <MessageSquare className="text-[#5B45FF]0 w-10 h-10" />
+                <WabaIcon className="h-10 w-10" />
               </div>
               <h2 className="text-3xl font-bold">Connect your WhatsApp Business Account</h2>
               <p className={cn("text-lg", isDark ? "text-gray-400" : "text-gray-600")}>
@@ -5866,7 +5869,7 @@ function InboxSection({
           )}>
             <div className="relative z-10 flex flex-col items-center">
               <div className={cn("w-16 h-16 rounded-full flex items-center justify-center mb-4", isDark ? "bg-gray-800" : "bg-white shadow-sm")}>
-                <MessageSquare size={32} className={isDark ? "text-gray-400" : "text-[#5B45FF]0"} />
+                <WabaIcon className="h-8 w-8" />
               </div>
               <h3 className={cn("text-lg font-bold mb-2", isDark ? "text-white" : "text-gray-900")}>Your Messages</h3>
               <p className={cn("text-sm max-w-xs", isDark ? "text-gray-400" : "text-gray-500")}>Select a contact from the list to start chatting.</p>
@@ -7119,7 +7122,7 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                 )}>
                   <div className="flex items-center gap-3 border-b border-slate-200/70 pb-4">
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#5B45FF] text-white">
-                      <MessageSquare size={20} />
+                      <WabaIcon className="h-5 w-5" />
                     </div>
                     <div>
                       <p className="font-bold text-slate-900 dark:text-white">WhatsApp Business Inbox</p>
@@ -10015,7 +10018,7 @@ function ProfileSection({ isDark }: { isDark: boolean }) {
                 <div className="flex justify-center space-x-8 border-t border-b py-4 border-gray-800/50 mb-4">
                   <div className="flex flex-col items-center space-y-1">
                     <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
-                      <MessageSquare className="w-5 h-5" />
+                      <WabaIcon className="h-5 w-5" />
                     </div>
                     <span className="text-[10px] font-medium opacity-60">Message</span>
                   </div>

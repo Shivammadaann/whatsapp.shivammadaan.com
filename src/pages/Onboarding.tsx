@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, ArrowRight, Mail, Phone, User, MessageSquare, ShieldCheck } from 'lucide-react';
+import { Camera, ArrowRight, Mail, Phone, User, ShieldCheck } from 'lucide-react';
 import { setDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
