@@ -1,0 +1,147 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Profile",
+      "description": "Stores user profile information and onboarding status.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "onboarded": {
+          "type": "boolean",
+          "description": "Whether the user has completed the onboarding journey."
+        },
+        "profilePicture": {
+          "type": "string",
+          "description": "The user's profile picture URL."
+        },
+        "consentAccepted": {
+          "type": "boolean",
+          "description": "Whether the user has accepted the terms and conditions."
+        },
+        "consentAcceptedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the user accepted the terms and conditions."
+        },
+        "companyName": {
+          "type": "string",
+          "description": "The user's company name."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the user profile was created."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "user"],
+          "description": "The user's role in the application."
+        }
+      },
+      "required": ["uid", "email", "onboarded"]
+    },
+    "messages": {
+      "title": "WhatsApp Message",
+      "description": "Stores WhatsApp messages for chat history.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "direction": { "type": "string", "enum": ["inbound", "outbound"] },
+        "status": { "type": "string" }
+      },
+      "required": ["from", "to", "text", "timestamp", "direction"]
+    },
+    "contacts": {
+      "title": "Contact",
+      "description": "Stores contact information for WhatsApp communication.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "lastMessage": { "type": "string" },
+        "lastMessageTime": { "type": "string", "format": "date-time" },
+        "unreadCount": { "type": "number" },
+        "avatarUrl": { "type": "string", "format": "uri" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" },
+        "customParams": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fullName", "whatsappNumber"]
+    },
+    "callLogs": {
+      "title": "Call Log",
+      "description": "Stores WhatsApp call history records.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "callId": { "type": "string" },
+        "contactName": { "type": "string" },
+        "contactPhone": { "type": "string" },
+        "direction": { "type": "string", "enum": ["incoming", "outgoing"] },
+        "status": { "type": "string", "enum": ["ringing", "missed", "ongoing", "ended", "failed"] },
+        "startedAt": { "type": "number" },
+        "endedAt": { "type": "number" },
+        "durationSeconds": { "type": "number" },
+        "phoneNumberId": { "type": "string" },
+        "businessPhoneNumber": { "type": "string" }
+      },
+      "required": ["id", "contactName", "contactPhone", "direction", "status", "startedAt"]
+    },
+    "broadcasts": {
+      "title": "Broadcast Campaign",
+      "description": "Stores WhatsApp broadcast campaign details and stats.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "templateName": { "type": "string" },
+        "status": { "type": "string" },
+        "sentCount": { "type": "number" },
+        "deliveredCount": { "type": "number" },
+        "readCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "templateName", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "User profile documents."
+    },
+    "/users/{userId}/messages/{messageId}": {
+      "schema": "messages",
+      "description": "User's WhatsApp message history."
+    },
+    "/users/{userId}/contacts/{contactId}": {
+      "schema": "contacts",
+      "description": "User's contact list."
+    },
+    "/users/{userId}/callLogs/{callLogId}": {
+      "schema": "callLogs",
+      "description": "User's WhatsApp call history."
+    },
+    "/users/{userId}/broadcasts/{broadcastId}": {
+      "schema": "broadcasts",
+      "description": "User's WhatsApp broadcast campaigns."
+    }
+  }
+}

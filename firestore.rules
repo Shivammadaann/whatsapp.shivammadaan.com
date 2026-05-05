@@ -1,0 +1,278 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: users
+// Document ID: {userId}
+// Fields:
+//   - uid: string (required) - The unique identifier for the user.
+//   - email: string (required, format: email) - The user's email address.
+//   - displayName: string (optional) - The user's full name.
+//   - firstName: string (optional) - The user's first name.
+//   - lastName: string (optional) - The user's last name.
+//   - emailAddress: string (optional, format: email) - Profile email address.
+//   - contactNumber: string (optional) - Primary phone number.
+//   - mobileNumber: string (optional) - Mobile phone number.
+//   - onboarded: boolean (required) - Whether the user has completed onboarding.
+//   - profilePicture: string (optional) - The user's profile picture URL.
+//   - companyName: string (optional) - The user's company name.
+//   - consentAccepted: boolean (optional) - Whether the user has accepted terms.
+//   - consentAcceptedAt: string (optional, format: date-time) - When terms were accepted.
+//   - subscriptions: map (optional) - Trial, plan, and unlocked service state.
+//   - toolSetup: map (optional) - Per-tool setup completion flags.
+//   - crmSetup: map (optional) - CRM workspace configuration.
+//   - notificationSettings: map (optional) - Notification preferences.
+//   - whatsappCredentials: map/null (optional) - WhatsApp connection details.
+//   - channelConnections: map (optional) - Social/channel connection state.
+//   - createdAt: timestamp/string (optional) - When the user profile was created.
+//   - role: string (optional) - The user's role (e.g., 'admin', 'user').
+//
+// Collection: users/{userId}/messages
+// Document ID: {messageId}
+// Fields:
+//   - id: string (optional)
+//   - from: string (required)
+//   - to: string (required)
+//   - text: string (required)
+//   - timestamp: number (required)
+//   - direction: string (required, enum: ['inbound', 'outbound'])
+//   - status: string (optional)
+//
+// Collection: users/{userId}/contacts
+// Document ID: {contactId}
+// Fields:
+//   - id: string (optional)
+//   - fullName: string (required)
+//   - whatsappNumber: string (required)
+//   - lastMessage: string (optional)
+//   - lastMessageTime: string (optional, format: date-time)
+//   - unreadCount: number (optional)
+//   - avatarUrl: string (optional, format: uri)
+//   - tags: list (optional)
+//   - notes: string (optional)
+//   - customParams: map (optional)
+//   - createdAt: string (optional, format: date-time)
+//
+// Collection: users/{userId}/broadcasts
+// Document ID: {broadcastId}
+// Fields:
+//   - id: string (optional)
+//   - name: string (required)
+//   - templateName: string (required)
+//   - status: string (required)
+//   - sentCount: number (optional)
+//   - deliveredCount: number (optional)
+//   - readCount: number (optional)
+//   - createdAt: string (optional, format: date-time)
+//
+// Collection: users/{userId}/callLogs
+// Document ID: {callLogId}
+// Fields:
+//   - id: string (required)
+//   - callId: string (optional)
+//   - contactName: string (required)
+//   - contactPhone: string (required)
+//   - direction: string (required, enum: ['incoming', 'outgoing'])
+//   - status: string (required, enum: ['ringing', 'missed', 'ongoing', 'ended', 'failed'])
+//   - startedAt: number (required)
+//   - endedAt: number (optional)
+//   - durationSeconds: number (optional)
+//   - phoneNumberId: string (optional)
+//   - businessPhoneNumber: string (optional)
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email.lower() == "support@connektly.in" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    function isValidUrl(url) {
+      return url is string &&
+        (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUserFields(data) {
+      return (!('uid' in data) || (data.uid is string && data.uid.size() > 0)) &&
+             (!('email' in data) || (data.email is string && isValidEmail(data.email))) &&
+             (!('onboarded' in data) || data.onboarded is bool) &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100)) &&
+             (!('firstName' in data) || (data.firstName is string && data.firstName.size() < 50)) &&
+             (!('lastName' in data) || (data.lastName is string && data.lastName.size() < 50)) &&
+             (!('emailAddress' in data) || (data.emailAddress is string && isValidEmail(data.emailAddress))) &&
+             (!('contactNumber' in data) || (data.contactNumber is string && data.contactNumber.size() < 30)) &&
+             (!('mobileNumber' in data) || (data.mobileNumber is string && data.mobileNumber.size() < 30)) &&
+             (!('profilePicture' in data) || (data.profilePicture is string && data.profilePicture.size() < 1000)) &&
+             (!('companyName' in data) || (data.companyName is string && data.companyName.size() < 100)) &&
+             (!('consentAccepted' in data) || data.consentAccepted is bool) &&
+             (!('consentAcceptedAt' in data) || isValidDateString(data.consentAcceptedAt)) &&
+             (!('subscriptions' in data) || data.subscriptions is map) &&
+             (!('toolSetup' in data) || data.toolSetup is map) &&
+             (!('crmSetup' in data) || data.crmSetup is map) &&
+             (!('notificationSettings' in data) || data.notificationSettings is map) &&
+             (!('whatsappCredentials' in data) || data.whatsappCredentials == null || data.whatsappCredentials is map) &&
+             (!('channelConnections' in data) || data.channelConnections is map) &&
+             (!('createdAt' in data) || data.createdAt is timestamp || isValidDateString(data.createdAt)) &&
+             (!('role' in data) || (data.role is string && data.role in ['admin', 'user']));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'onboarded']) &&
+             data.uid is string && data.uid.size() > 0 &&
+             data.email is string && isValidEmail(data.email) &&
+             data.onboarded is bool &&
+             isValidUserFields(data);
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['from', 'to', 'text', 'timestamp', 'direction']) &&
+             data.from is string && data.from.size() < 50 &&
+             data.to is string && data.to.size() < 50 &&
+             data.text is string && data.text.size() < 5000 &&
+             data.timestamp is number &&
+             data.direction is string && data.direction in ['inbound', 'outbound'] &&
+             (!('status' in data) || (data.status is string && data.status.size() < 50)) &&
+             (!('whatsappId' in data) || (data.whatsappId is string && data.whatsappId.size() < 100)) &&
+             (!('type' in data) || (data.type is string && data.type.size() < 50)) &&
+             (!('templateName' in data) || (data.templateName is string && data.templateName.size() < 200)) &&
+             (!('templatePreview' in data) || data.templatePreview is map) &&
+             (!('failedReason' in data) || (data.failedReason is string && data.failedReason.size() < 1000)) &&
+             (!('owner' in data) || data.owner is bool);
+    }
+
+    function isValidCallLog(data) {
+      return data.keys().hasAll(['id', 'contactName', 'contactPhone', 'direction', 'status', 'startedAt']) &&
+             data.id is string && data.id.size() > 0 &&
+             data.contactName is string && data.contactName.size() < 100 &&
+             data.contactPhone is string && data.contactPhone.size() < 20 &&
+             data.direction is string && data.direction in ['incoming', 'outgoing'] &&
+             data.status is string && data.status in ['ringing', 'missed', 'ongoing', 'ended', 'failed'] &&
+             data.startedAt is number &&
+             (!('endedAt' in data) || data.endedAt is number) &&
+             (!('durationSeconds' in data) || data.durationSeconds is number) &&
+             (!('callId' in data) || (data.callId is string && data.callId.size() < 100)) &&
+             (!('phoneNumberId' in data) || (data.phoneNumberId is string && data.phoneNumberId.size() < 100)) &&
+             (!('businessPhoneNumber' in data) || (data.businessPhoneNumber is string && data.businessPhoneNumber.size() < 20)) &&
+             (!('label' in data) || (data.label is string && data.label.size() < 200)) &&
+             (!('permissionStatus' in data) || (data.permissionStatus is string && data.permissionStatus.size() < 100)) &&
+             (!('source' in data) || (data.source is string && data.source.size() < 50)) &&
+             (!('participants' in data) || (data.participants is list && data.participants.size() < 20)) &&
+             (!('session' in data) || data.session == null || data.session is map) &&
+             (!('rawCallPayload' in data) || data.rawCallPayload is map);
+    }
+
+    function isValidBroadcast(data) {
+      return data.keys().hasAll(['name', 'templateName', 'status']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.templateName is string && data.templateName.size() > 0 && data.templateName.size() < 100 &&
+             data.status is string && data.status.size() < 50 &&
+             (!('sentCount' in data) || data.sentCount is number) &&
+             (!('deliveredCount' in data) || data.deliveredCount is number) &&
+             (!('readCount' in data) || data.readCount is number) &&
+             (!('createdAt' in data) || isValidDateString(data.createdAt));
+    }
+
+    function isValidContact(data) {
+      return data.keys().hasAll(['fullName', 'whatsappNumber']) &&
+             data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
+             data.whatsappNumber is string && data.whatsappNumber.size() > 0 && data.whatsappNumber.size() < 20 &&
+             (!('lastMessage' in data) || (data.lastMessage is string && data.lastMessage.size() < 1000)) &&
+             (!('lastMessageTime' in data) || isValidDateString(data.lastMessageTime)) &&
+             (!('unreadCount' in data) || data.unreadCount is number) &&
+             (!('avatarUrl' in data) || isValidUrl(data.avatarUrl)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() < 20)) &&
+             (!('email' in data) || (data.email is string && isValidEmail(data.email))) &&
+             (!('tags' in data) || (data.tags is list && data.tags.size() < 50)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() < 2000)) &&
+             (!('customParams' in data) || data.customParams is map) &&
+             (!('createdAt' in data) || isValidDateString(data.createdAt)) &&
+             (!('updatedAt' in data) || isValidDateString(data.updatedAt));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      
+      allow create: if isOwner(userId) && 
+                      isValidUser(request.resource.data) &&
+                      (!('role' in request.resource.data) || request.resource.data.role == 'user' || isAdmin());
+                      
+      allow update: if isOwner(userId) && 
+                      isValidUserFields(request.resource.data) &&
+                      (
+                        !('role' in request.resource.data) ||
+                        !('role' in resource.data) ||
+                        request.resource.data.role == resource.data.role ||
+                        isAdmin()
+                      );
+
+      match /messages/{messageId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidMessage(request.resource.data);
+        allow update: if isOwner(userId) && isValidMessage(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /contacts/{contactId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidContact(request.resource.data);
+        allow update: if isOwner(userId) && isValidContact(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /callLogs/{callLogId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidCallLog(request.resource.data);
+        allow update: if isOwner(userId) && isValidCallLog(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /broadcasts/{broadcastId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidBroadcast(request.resource.data);
+        allow update: if isOwner(userId) && isValidBroadcast(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
