@@ -358,8 +358,6 @@ export interface ContactDto {
   contact_status?: string;
   source?: string;
   channel_id?: string;
-  ig_phone_source?: string;
-  mg_phone_source?: string;
   opted_in?: boolean;
   allow_broadcast?: boolean;
   allow_sms?: boolean;
@@ -374,8 +372,6 @@ export interface ContactDto {
 
 export interface ContactLinkDto {
   whats_app_contact_id?: string;
-  instagram_contact_id?: string;
-  messenger_contact_id?: string;
 }
 
 export interface ConversationEventDto {

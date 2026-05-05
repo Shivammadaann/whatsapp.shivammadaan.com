@@ -19,9 +19,6 @@ import {
   Lock,
   Crown,
   Sparkles,
-  Facebook,
-  Instagram,
-  Linkedin,
   BadgeDollarSign,
   Send,
   Database,
@@ -40,8 +37,6 @@ import { whatsappService } from '../services/whatsappService';
 import { Logo } from '../components/Logo';
 
 const WHATSAPP_ICON_URL = 'https://upload.wikimedia.org/wikipedia/commons/1/19/WhatsApp_logo-color-vertical.svg';
-const INSTAGRAM_ICON_URL = 'https://upload.wikimedia.org/wikipedia/commons/9/95/Instagram_logo_2022.svg';
-const MESSENGER_ICON_URL = 'https://upload.wikimedia.org/wikipedia/commons/6/63/Facebook_Messenger_logo_2025.svg';
 
 function WabaIcon({ size = 18 }: { size?: number }) {
   return <img src="/waba.svg" alt="" width={size} height={size} className="object-contain" />;
@@ -66,14 +61,6 @@ function WhatsAppIcon({ size = 18 }: { size?: number }) {
   return <BrandImageIcon src={WHATSAPP_ICON_URL} alt="WhatsApp" size={size} />;
 }
 
-function InstagramBrandIcon({ size = 18 }: { size?: number }) {
-  return <BrandImageIcon src={INSTAGRAM_ICON_URL} alt="Instagram" size={size} />;
-}
-
-function MessengerIcon({ size = 18 }: { size?: number }) {
-  return <BrandImageIcon src={MESSENGER_ICON_URL} alt="Messenger" size={size} />;
-}
-
 const plans = [
   {
     id: 'WhatsApp Business-one',
@@ -84,9 +71,6 @@ const plans = [
     highlights: ['WhatsApp Business Inbox', 'CRM access', 'Email tools', 'Analytics', 'Automation features'],
     visuals: [
       { label: 'WhatsApp', icon: WhatsAppIcon },
-      { label: 'Facebook', icon: Facebook },
-      { label: 'Instagram', icon: Instagram },
-      { label: 'LinkedIn', icon: Linkedin },
       { label: 'CRM', icon: Users },
       { label: 'Email', icon: Mail },
       { label: 'SMS', icon: Smartphone },
@@ -108,9 +92,7 @@ const serviceCatalog = [
     surface: 'bg-white',
     ribbon: 'bg-[#5B45FF] text-[#5B45FF]',
     visuals: [
-      { label: 'WhatsApp', icon: WhatsAppIcon },
-      { label: 'Instagram', icon: InstagramBrandIcon },
-      { label: 'Messenger', icon: MessengerIcon }
+      { label: 'WhatsApp', icon: WhatsAppIcon }
     ]
   },
   {

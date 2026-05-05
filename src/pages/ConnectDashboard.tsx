@@ -16,7 +16,6 @@ import {
   Settings, 
   Moon, 
   Sun, 
-  Instagram,
   Users,
   LogOut,
   CheckCircle2,
@@ -86,14 +85,12 @@ import { twMerge } from 'tailwind-merge';
 import Papa from 'papaparse';
 import { WebhooksSection } from '../components/WebhooksSection';
 import { Logo } from '../components/Logo';
-import { buildBackendUrl, buildBackendWsUrl, BACKEND_ORIGIN } from '../lib/backend';
+import { buildBackendUrl, buildBackendWsUrl } from '../lib/backend';
 import { cn } from '../lib/utils';
 import whatsappCallsLogo from '../../WhatsApp Call Logo.avif';
 import defaultConversationProfile from '../../Default Profile.png';
 
 const WHATSAPP_ICON_URL = 'https://upload.wikimedia.org/wikipedia/commons/1/19/WhatsApp_logo-color-vertical.svg';
-const INSTAGRAM_ICON_URL = 'https://upload.wikimedia.org/wikipedia/commons/9/95/Instagram_logo_2022.svg';
-const MESSENGER_ICON_URL = 'https://upload.wikimedia.org/wikipedia/commons/6/63/Facebook_Messenger_logo_2025.svg';
 
 const WabaIcon = ({ className = "" }: { className?: string }) => (
   <img src="/waba.svg" alt="" className={cn("object-contain", className)} />
@@ -119,19 +116,11 @@ function WhatsAppIcon({ size = 18 }: { size?: number }) {
   return <BrandImageIcon src={WHATSAPP_ICON_URL} alt="WhatsApp" size={size} />;
 }
 
-function InstagramBrandIcon({ size = 18 }: { size?: number }) {
-  return <BrandImageIcon src={INSTAGRAM_ICON_URL} alt="Instagram" size={size} />;
-}
-
-function MessengerIcon({ size = 18 }: { size?: number }) {
-  return <BrandImageIcon src={MESSENGER_ICON_URL} alt="Messenger" size={size} />;
-}
-
 function WhatsAppCallsIcon({ size = 18 }: { size?: number }) {
   return <BrandImageIcon src={whatsappCallsLogo} alt="WhatsApp Calls" size={size} />;
 }
 
-type TabType = 'inbox' | 'calls' | 'broadcast' | 'templates' | 'contacts' | 'automations' | 'profile' | 'channel_status' | 'settings';
+type TabType = 'inbox' | 'calls' | 'broadcast' | 'templates' | 'contacts' | 'automations' | 'profile' | 'settings';
 type CallDirection = 'incoming' | 'outgoing';
 type CallStatus = 'ringing' | 'missed' | 'ongoing' | 'ended' | 'failed';
 type CallFilter = 'all' | 'missed' | 'incoming' | 'outgoing';
@@ -1654,21 +1643,11 @@ export default function ConnectDashboard() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const requestedTab = params.get('tab');
-    const instagramStatus = params.get('ig_status');
-    const instagramMessage = params.get('ig_message');
 
-    if (requestedTab && ['inbox', 'calls', 'broadcast', 'templates', 'contacts', 'automations', 'profile', 'channel_status', 'settings'].includes(requestedTab)) {
+    if (requestedTab && ['inbox', 'calls', 'broadcast', 'templates', 'contacts', 'automations', 'profile', 'settings'].includes(requestedTab)) {
       setActiveTab(requestedTab as TabType);
     }
-
-    if (instagramStatus) {
-      showAppDialog({
-        tone: instagramStatus === 'success' ? 'success' : 'error',
-        message: instagramMessage || (instagramStatus === 'success' ? 'Instagram connected successfully.' : 'Instagram connection failed.')
-      });
-      navigate(location.pathname, { replace: true });
-    }
-  }, [location.pathname, location.search, navigate]);
+  }, [location.search]);
   const requestNotificationPermission = () => {
     if (
       notificationSettings.browserEnabled &&
@@ -2401,8 +2380,7 @@ export default function ConnectDashboard() {
       contacts: { title: 'Contacts', description: 'Organize customers, import lists, and keep relationship data clean.' },
       automations: { title: 'Automations', description: 'Design repeatable flows for follow-ups, routing, and routine work.' },
       settings: { title: 'Settings', description: 'Manage workspace access, account configuration, and admin controls.' },
-      profile: { title: 'Business Profile', description: 'Polish your public business presence and verify key brand details.' },
-      channel_status: { title: 'Channel Status', description: 'See connection health, verification state, and live account signals.' }
+      profile: { title: 'Business Profile', description: 'Polish your public business presence and verify key brand details.' }
     };
 
     return tabConfig[activeTab];
@@ -2450,10 +2428,6 @@ export default function ConnectDashboard() {
       profile: [
         { label: 'Business profile', value: accountInfo?.whatsappName || 'Pending' },
         { label: 'Phone ID', value: accountInfo?.phoneId ? 'Connected' : 'Pending' }
-      ],
-      channel_status: [
-        { label: 'Connected number', value: phoneNumbers.length.toLocaleString() },
-        { label: 'Status', value: String(accountInfo?.status || 'Unknown') }
       ]
     };
 
@@ -2850,14 +2824,6 @@ export default function ConnectDashboard() {
             collapsed={isSidebarCollapsed}
           />
           <NavItem 
-            icon={<Activity size={20} />} 
-            label="Channel Status" 
-            active={activeTab === 'channel_status'} 
-            onClick={() => { setActiveTab('channel_status'); setIsSidebarOpen(false); }}
-            isDark={isDark}
-            collapsed={isSidebarCollapsed}
-          />
-          <NavItem 
             icon={<Settings size={20} />} 
             label="Settings" 
             active={activeTab === 'settings'} 
@@ -3012,7 +2978,6 @@ export default function ConnectDashboard() {
             {activeTab === 'templates' && <TemplatesSection isDark={isDark} templates={templates} isCreateTemplateModalOpen={isCreateTemplateModalOpen} setIsCreateTemplateModalOpen={setIsCreateTemplateModalOpen} />}
             {activeTab === 'contacts' && <ContactsSection isDark={isDark} contacts={contacts} />}
             {activeTab === 'automations' && <AutomationsSection isDark={isDark} />}
-            {activeTab === 'channel_status' && <ChannelStatusSection isDark={isDark} currentUserProfile={currentUserProfile} initialChannel={new URLSearchParams(location.search).get('channel') === 'instagram' ? 'instagram' : 'whatsapp'} />}
             {activeTab === 'profile' && <ProfileSection isDark={isDark} />}
             {activeTab === 'settings' && (
               <SettingsSection
@@ -3752,20 +3717,6 @@ function OverviewSection({ isDark, templates, broadcasts, stats, channels, accou
         iconFrameClass: ''
       },
       {
-        name: 'Instagram',
-        detail: 'Coming soon',
-        connected: false,
-        icon: <InstagramBrandIcon size={20} />,
-        iconFrameClass: ''
-      },
-      {
-        name: 'Messenger',
-        detail: 'Coming soon',
-        connected: false,
-        icon: <MessengerIcon size={20} />,
-        iconFrameClass: ''
-      },
-      {
         name: 'WhatsApp Calls',
         detail: 'Coming soon',
         connected: false,
@@ -4050,7 +4001,7 @@ function InboxSection({
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'starred' | 'favorites'>('all');
   const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
-  const [selectedChannel, setSelectedChannel] = useState<'whatsapp' | 'instagram' | 'messenger' | 'wa_calls'>('whatsapp');
+  const [selectedChannel, setSelectedChannel] = useState<'whatsapp' | 'wa_calls'>('whatsapp');
   const [isChannelMenuOpen, setIsChannelMenuOpen] = useState(false);
   const [showComposerTools, setShowComposerTools] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -4084,20 +4035,6 @@ function InboxSection({
       icon: <WhatsAppIcon size={18} />,
       iconFrameClass: '',
       isAvailable: true
-    },
-    {
-      id: 'instagram' as const,
-      label: 'Instagram',
-      icon: <InstagramBrandIcon size={18} />,
-      iconFrameClass: '',
-      isAvailable: false
-    },
-    {
-      id: 'messenger' as const,
-      label: 'Messenger',
-      icon: <MessengerIcon size={18} />,
-      iconFrameClass: '',
-      isAvailable: false
     },
     {
       id: 'wa_calls' as const,
@@ -8709,726 +8646,6 @@ function TriggerLine({ title, copy, isDark }: { title: string; copy: string; isD
       <p className="text-sm font-bold">{title}</p>
       <p className="mt-2 text-xs leading-6 text-gray-500">{copy}</p>
     </div>
-  );
-}
-
-function ChannelStatusSection({ isDark, currentUserProfile, initialChannel = 'whatsapp' }: { isDark: boolean, currentUserProfile: any, initialChannel?: 'whatsapp' | 'instagram' }) {
-  const [businessAccounts, setBusinessAccounts] = useState<any[]>([]);
-  const [phoneNumbers, setPhoneNumbers] = useState<WhatsAppPhoneNumber[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [targetPhoneId, setTargetPhoneId] = useState<string>(whatsappService.getCredentials().PHONE_NUMBER_ID);
-  const [disconnecting, setDisconnecting] = useState(false);
-  const [activeChannelTab, setActiveChannelTab] = useState<'whatsapp' | 'instagram' | 'messenger'>(initialChannel);
-  const [connectingChannel, setConnectingChannel] = useState<'instagram' | 'messenger' | null>(null);
-  const [disconnectingInstagram, setDisconnectingInstagram] = useState(false);
-  const [catalogs, setCatalogs] = useState<Array<{ id: string; name: string; vertical?: string }>>([]);
-  const [commerceSettings, setCommerceSettings] = useState<WhatsAppCommerceSettings | null>(null);
-  const [catalogIdInput, setCatalogIdInput] = useState(currentUserProfile?.whatsappCatalogConnection?.catalogId || '');
-  const [catalogVisible, setCatalogVisible] = useState(Boolean(currentUserProfile?.whatsappCatalogConnection?.isCatalogVisible));
-  const [cartEnabled, setCartEnabled] = useState(Boolean(currentUserProfile?.whatsappCatalogConnection?.isCartEnabled));
-  const [savingCommerce, setSavingCommerce] = useState(false);
-  const [loadingCommerce, setLoadingCommerce] = useState(false);
-  const [callingProbe, setCallingProbe] = useState<WhatsAppCallingProbe | null>(null);
-  const [loadingCallingProbe, setLoadingCallingProbe] = useState(false);
-
-  useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      try {
-        const [accounts, phones, availableCatalogs] = await Promise.all([
-          whatsappService.getBusinessAccounts(),
-          whatsappService.getPhoneNumbers(),
-          whatsappService.getCatalogs()
-        ]);
-        setBusinessAccounts(accounts);
-        setPhoneNumbers(phones);
-        setCatalogs(availableCatalogs);
-      } catch (error) {
-        console.error("Failed to load channel status data", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    if (!targetPhoneId) return;
-
-    let cancelled = false;
-
-    const loadCapabilityData = async () => {
-      setLoadingCommerce(true);
-      setLoadingCallingProbe(true);
-
-      try {
-        const [liveCommerceSettings, liveCallingProbe] = await Promise.all([
-          whatsappService.getCommerceSettings(targetPhoneId),
-          whatsappService.probeCallingApi(targetPhoneId)
-        ]);
-
-        if (cancelled) return;
-
-        const effectiveCommerce = liveCommerceSettings || {
-          connected: Boolean(currentUserProfile?.whatsappCatalogConnection?.catalogId),
-          catalogId: currentUserProfile?.whatsappCatalogConnection?.catalogId || '',
-          isCatalogVisible: Boolean(currentUserProfile?.whatsappCatalogConnection?.isCatalogVisible),
-          isCartEnabled: Boolean(currentUserProfile?.whatsappCatalogConnection?.isCartEnabled)
-        };
-
-        setCommerceSettings(effectiveCommerce);
-        setCatalogIdInput(effectiveCommerce?.catalogId || currentUserProfile?.whatsappCatalogConnection?.catalogId || '');
-        setCatalogVisible(Boolean(effectiveCommerce?.isCatalogVisible));
-        setCartEnabled(Boolean(effectiveCommerce?.isCartEnabled));
-        setCallingProbe(liveCallingProbe);
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Failed to load commerce or calling capability data:', error);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingCommerce(false);
-          setLoadingCallingProbe(false);
-        }
-      }
-    };
-
-    loadCapabilityData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    targetPhoneId,
-    currentUserProfile?.whatsappCatalogConnection?.catalogId,
-    currentUserProfile?.whatsappCatalogConnection?.isCatalogVisible,
-    currentUserProfile?.whatsappCatalogConnection?.isCartEnabled
-  ]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  const primaryPhone = phoneNumbers.find(p => p.phoneId === targetPhoneId) || phoneNumbers[0];
-
-  const handleNumberChange = async (newPhoneId: string) => {
-    setTargetPhoneId(newPhoneId);
-    try {
-      if (auth.currentUser) {
-        const creds = whatsappService.getCredentials();
-        await setDoc(doc(db, 'users', auth.currentUser.uid), {
-          whatsappCredentials: {
-            accessToken: creds.ACCESS_TOKEN,
-            businessAccountId: creds.BUSINESS_ACCOUNT_ID,
-            phoneNumberId: newPhoneId
-          }
-        }, { merge: true });
-        whatsappService.setCredentials(creds.ACCESS_TOKEN, newPhoneId, creds.BUSINESS_ACCOUNT_ID);
-      }
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser?.uid}`);
-      console.error('Failed to update connected number:', error);
-    }
-  };
-
-  const handleDisconnect = async () => {
-    if (!auth.currentUser) return;
-
-    setDisconnecting(true);
-    try {
-      await setDoc(doc(db, 'users', auth.currentUser.uid), {
-        whatsappCredentials: null,
-        toolSetup: {
-          whatsapp: false
-        }
-      }, { merge: true });
-      whatsappService.clearCredentials();
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser.uid}`);
-      console.error('Failed to disconnect WhatsApp Business Account:', error);
-    } finally {
-      setDisconnecting(false);
-    }
-  };
-
-  const handleSaveCommerce = async () => {
-    if (!auth.currentUser || !targetPhoneId) return;
-
-    const trimmedCatalogId = catalogIdInput.trim();
-    if (!trimmedCatalogId) {
-      showAppDialog({ tone: 'warning', message: 'Enter a catalog ID before saving WhatsApp commerce settings.' });
-      return;
-    }
-
-    setSavingCommerce(true);
-    try {
-      const result = await whatsappService.updateCommerceSettings(targetPhoneId, {
-        catalogId: trimmedCatalogId,
-        isCatalogVisible: catalogVisible,
-        isCartEnabled: cartEnabled
-      });
-
-      if (!result.success) {
-        showAppDialog({ tone: 'error', message: result.error || 'Unable to connect the WhatsApp catalog right now.' });
-        return;
-      }
-
-      const nextCommerceSettings: WhatsAppCommerceSettings = {
-        connected: true,
-        catalogId: trimmedCatalogId,
-        isCatalogVisible: catalogVisible,
-        isCartEnabled: cartEnabled
-      };
-
-      setCommerceSettings(nextCommerceSettings);
-
-      await setDoc(doc(db, 'users', auth.currentUser.uid), {
-        whatsappCatalogConnection: {
-          ...nextCommerceSettings,
-          phoneNumberId: targetPhoneId,
-          updatedAt: new Date().toISOString()
-        }
-      }, { merge: true });
-
-      showAppDialog({ tone: 'success', message: 'WhatsApp catalog connected successfully.' });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser.uid}`);
-      console.error('Failed to save WhatsApp commerce settings:', error);
-      showAppDialog({ tone: 'error', message: 'Unable to connect the WhatsApp catalog right now.' });
-    } finally {
-      setSavingCommerce(false);
-    }
-  };
-
-  const channelConnections = currentUserProfile?.channelConnections || {};
-  const instagramConnection = currentUserProfile?.instagramConnection || null;
-
-  const handleConnectChannel = async (channel: 'instagram' | 'messenger') => {
-    if (!auth.currentUser) return;
-
-    setConnectingChannel(channel);
-    try {
-      if (channel === 'instagram') {
-        window.location.href = `${buildBackendUrl('/api/ig/auth/start')}?uid=${encodeURIComponent(auth.currentUser.uid)}`;
-        return;
-      }
-
-      await setDoc(doc(db, 'users', auth.currentUser.uid), {
-        channelConnections: {
-          ...channelConnections,
-          [channel]: true
-        }
-      }, { merge: true });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser.uid}`);
-      console.error(`Failed to connect ${channel}:`, error);
-      showAppDialog({ tone: 'error', message: `Unable to connect ${channel} right now.` });
-    } finally {
-      setConnectingChannel(null);
-    }
-  };
-
-  const handleDisconnectInstagram = async () => {
-    if (!auth.currentUser) return;
-
-    const confirmed = await showAppConfirm({
-      tone: 'warning',
-      title: 'Disconnect Instagram',
-      message: 'This will remove the Instagram connection from your workspace until you connect it again.',
-      confirmLabel: 'Disconnect',
-      cancelLabel: 'Keep Connected'
-    });
-
-    if (!confirmed) return;
-
-    setDisconnectingInstagram(true);
-    try {
-      await setDoc(doc(db, 'users', auth.currentUser.uid), {
-        instagramConnection: null,
-        channelConnections: {
-          ...channelConnections,
-          instagram: false
-        },
-        toolSetup: {
-          instagram: false
-        }
-      }, { merge: true });
-      showAppDialog({ tone: 'success', message: 'Instagram has been disconnected from this workspace.' });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser.uid}`);
-      console.error('Failed to disconnect Instagram:', error);
-      showAppDialog({ tone: 'error', message: 'Unable to disconnect Instagram right now.' });
-    } finally {
-      setDisconnectingInstagram(false);
-    }
-  };
-
-  const renderChannelCard = (channel: 'instagram' | 'messenger') => {
-    const isConnected = Boolean(channelConnections?.[channel]);
-    const isConnecting = connectingChannel === channel;
-    const config = channel === 'instagram'
-      ? {
-          title: 'Instagram',
-          subtitle: 'Connect your Instagram Business account and Facebook Page so DMs can be routed through your backend.',
-          icon: <InstagramBrandIcon size={22} />,
-          iconFrameClass: '',
-          details: instagramConnection
-            ? [
-                { label: 'Instagram Handle', value: instagramConnection.instagramUsername ? `@${instagramConnection.instagramUsername}` : 'Connected' },
-                { label: 'Instagram Account ID', value: instagramConnection.instagramAccountId || 'Unknown' },
-                { label: 'Linked Facebook Page', value: instagramConnection.pageName || instagramConnection.pageId || 'Unknown' },
-                { label: 'Webhook Backend', value: 'Use your hosted Instagram webhook endpoint' }
-              ]
-            : [
-                { label: 'Required Account', value: 'Instagram Business' },
-                { label: 'Required Asset', value: 'Linked Facebook Page' },
-                { label: 'OAuth Scope', value: 'instagram_manage_messages' },
-                { label: 'Redirect', value: `${BACKEND_ORIGIN}/api/ig/auth/callback` }
-              ]
-        }
-      : {
-          title: 'Messenger',
-          subtitle: 'Connect Facebook Messenger once this channel is ready for your workspace.',
-          icon: <MessengerIcon size={22} />,
-          iconFrameClass: '',
-          details: [
-            { label: 'Status', value: 'Planned' },
-            { label: 'Webhook', value: 'Not configured yet' },
-            { label: 'Permissions', value: 'Pending' },
-            { label: 'OAuth', value: 'Coming next' }
-          ]
-        };
-
-    return (
-      <div className="mx-auto w-full max-w-3xl">
-        <div className={cn("rounded-[2rem] border p-6 md:p-8", isDark ? "border-gray-800 bg-[#111827]" : "border-gray-200 bg-white shadow-sm")}>
-          <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-            <div className="flex items-start gap-4">
-              <div className={cn("flex h-14 w-14 items-center justify-center rounded-2xl", config.iconFrameClass)}>
-                {config.icon}
-              </div>
-              <div>
-                <div className="flex items-center gap-3">
-                  <h3 className="text-xl font-bold">{config.title}</h3>
-                  <span className={cn(
-                    "rounded-full px-3 py-1 text-[10px] font-semibold",
-                    isConnected ? "bg-[#5B45FF]0/10 text-[#5B45FF]0" : "bg-slate-500/10 text-slate-500"
-                  )}>
-                    {isConnected ? 'Connected' : 'Not Connected'}
-                  </span>
-                </div>
-                <p className="mt-2 max-w-xl text-sm text-slate-500">{config.subtitle}</p>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-start gap-3 md:items-end">
-              {isConnected ? (
-                <div className={cn("rounded-2xl border px-4 py-3 text-sm font-semibold", isDark ? "border-[#5B45FF]0/20 bg-[#5B45FF]0/10 text-[#5B45FF]" : "border-[#5B45FF] bg-[#5B45FF] text-[#5B45FF]")}>
-                  Connection Status: Connected
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleConnectChannel(channel)}
-                  disabled={isConnecting}
-                  className="inline-flex items-center justify-center rounded-2xl bg-[#5B45FF]0 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]0/20 transition-all hover:bg-[#5B45FF] disabled:opacity-50"
-                >
-                  {isConnecting ? 'Connecting...' : channel === 'instagram' ? 'Connect Instagram' : 'Connect Channel'}
-                </button>
-              )}
-              {channel === 'instagram' && isConnected && (
-                <button
-                  type="button"
-                  onClick={handleDisconnectInstagram}
-                  disabled={disconnectingInstagram}
-                  className={cn(
-                    "inline-flex items-center justify-center rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-all",
-                    isDark ? "border-gray-700 bg-gray-900/60 text-slate-200 hover:border-rose-500 hover:text-rose-300" : "border-slate-200 bg-white text-slate-600 hover:border-rose-300 hover:text-rose-600"
-                  )}
-                >
-                  {disconnectingInstagram ? 'Disconnecting...' : 'Disconnect'}
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            {config.details.map((detail) => (
-              <div
-                key={`${config.title}-${detail.label}`}
-                className={cn("rounded-[1.4rem] border p-4", isDark ? "border-gray-800 bg-gray-900/50" : "border-slate-200 bg-slate-50")}
-              >
-                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">{detail.label}</p>
-                <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-white break-all">{detail.value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <motion.div 
-      key="channel_status"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="mx-auto w-full max-w-6xl space-y-6 md:space-y-8"
-    >
-      <div className="flex flex-wrap gap-2">
-        {([
-          { key: 'whatsapp', label: 'WhatsApp' },
-          { key: 'instagram', label: 'Instagram' },
-          { key: 'messenger', label: 'Messenger' }
-        ] as const).map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => setActiveChannelTab(item.key)}
-            className={cn(
-              "rounded-2xl px-4 py-2 text-sm font-semibold transition-all",
-              activeChannelTab === item.key
-                ? "bg-[#5B45FF]0 text-white shadow-lg shadow-[#5B45FF]0/20"
-                : (isDark ? "bg-gray-800 text-gray-300 hover:bg-gray-700" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50")
-            )}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-
-      {activeChannelTab === 'instagram' && renderChannelCard('instagram')}
-      {activeChannelTab === 'messenger' && renderChannelCard('messenger')}
-
-      {activeChannelTab === 'whatsapp' && (
-      <div className={cn("rounded-2xl md:rounded-3xl p-6 md:p-8 border", isDark ? "bg-[#111827] border-gray-800" : "bg-white border-gray-200 shadow-sm")}>
-        <div className="flex items-center gap-3 mb-6">
-          <Activity className="text-blue-500" />
-          <h3 className="text-lg md:text-xl font-bold">Channel Status</h3>
-        </div>
-
-        <div className="grid gap-8 xl:grid-cols-2">
-          {/* 1. Account Connection */}
-          <div>
-            <h4 className={cn("text-md font-bold mb-4 border-b pb-2 flex items-center gap-2", isDark ? "border-gray-800" : "border-gray-200")}>
-              <Smartphone size={18} className="text-gray-400" />
-              Account Connection
-            </h4>
-            <div className={cn("rounded-2xl border px-4 py-4", isDark ? "bg-gray-800/30 border-gray-700" : "bg-gray-50 border-gray-200")}>
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <p className="text-sm font-medium">Connected Number</p>
-                  <p className="text-xs text-gray-500 mt-1">Select the active number for your channel.</p>
-                </div>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-                  <select
-                    value={targetPhoneId}
-                    onChange={(e) => handleNumberChange(e.target.value)}
-                    className={cn(
-                      "min-w-[240px] max-w-[320px] rounded-xl border px-3 py-2 text-xs font-medium outline-none transition-all",
-                      isDark
-                        ? "bg-gray-900 border-gray-700 text-gray-100"
-                        : "bg-white border-gray-300 text-gray-700"
-                    )}
-                  >
-                    {phoneNumbers.map((phone) => (
-                      <option key={phone.phoneId} value={phone.phoneId}>
-                        {phone.displayPhoneNumber} ({phone.verifiedName || 'Unverified'})
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={handleDisconnect}
-                    disabled={disconnecting}
-                    className={cn(
-                      "inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-semibold transition-all disabled:opacity-50",
-                      isDark
-                        ? "border-red-900/70 bg-red-950/40 text-red-300 hover:bg-red-950/60"
-                        : "border-red-200 bg-white text-red-600 hover:bg-red-50"
-                    )}
-                  >
-                    {disconnecting ? 'Disconnecting...' : 'Disconnect Account'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 2. Message Limit */}
-          <div>
-            <h4 className="text-md font-bold mb-4 border-b pb-2 border-gray-800 flex items-center gap-2">
-              <Zap size={18} className="text-gray-400" />
-              Message Limit
-            </h4>
-            <div className={cn("p-4 rounded-xl border", isDark ? "bg-gray-800/30 border-gray-700" : "bg-gray-50 border-gray-200")}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xl font-bold text-blue-500">
-                    {(primaryPhone?.whatsappBusinessManagerMessagingLimit || primaryPhone?.messagingLimitTier) === 'TIER_50' ? '50' :
-                     (primaryPhone?.whatsappBusinessManagerMessagingLimit || primaryPhone?.messagingLimitTier) === 'TIER_250' ? '250' :
-                     (primaryPhone?.whatsappBusinessManagerMessagingLimit || primaryPhone?.messagingLimitTier) === 'TIER_1K' ? '1,000' :
-                     (primaryPhone?.whatsappBusinessManagerMessagingLimit || primaryPhone?.messagingLimitTier) === 'TIER_10K' ? '10,000' :
-                     (primaryPhone?.whatsappBusinessManagerMessagingLimit || primaryPhone?.messagingLimitTier) === 'TIER_100K' ? '100,000' :
-                     (primaryPhone?.whatsappBusinessManagerMessagingLimit || primaryPhone?.messagingLimitTier) === 'TIER_UNLIMITED' ? 'Unlimited' :
-                     (primaryPhone?.whatsappBusinessManagerMessagingLimit || primaryPhone?.messagingLimitTier) || 'N/A'}
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">Business-initiated conversations in a rolling 24-hour period</p>
-                </div>
-                <div className="hidden md:block text-xs px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 font-medium">
-                  {primaryPhone?.whatsappBusinessManagerMessagingLimit || primaryPhone?.messagingLimitTier || 'Unknown Tier'}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 3. WhatsApp Display Name */}
-          <div>
-            <h4 className="text-md font-bold mb-4 border-b pb-2 border-gray-800 flex items-center gap-2">
-              <ShieldCheck size={18} className="text-gray-400" />
-              WhatsApp Display Name
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className={cn("p-4 rounded-xl border", isDark ? "bg-gray-800/30 border-gray-700" : "bg-gray-50 border-gray-200")}>
-                <p className="text-sm text-gray-500 mb-2">Approval Status</p>
-                <div className="flex items-center gap-2">
-                  {primaryPhone?.nameStatus === 'APPROVED' ? (
-                    <CheckCircle2 className="text-[#5B45FF]0" size={20} />
-                  ) : primaryPhone?.nameStatus === 'DECLINED' ? (
-                    <AlertCircle className="text-red-500" size={20} />
-                  ) : (
-                    <Info className="text-yellow-500" size={20} />
-                  )}
-                  <span className="font-bold text-lg">
-                    {primaryPhone?.nameStatus || 'UNKNOWN'}
-                  </span>
-                </div>
-                <p className="text-sm mt-3 font-medium">
-                  Current Name: <span className="text-gray-400">{primaryPhone?.verifiedName || 'N/A'}</span>
-                </p>
-              </div>
-              
-              <div className="p-4 rounded-xl border text-sm border-[#5B45FF] bg-[#5B45FF] text-white">
-                <p className="font-bold mb-2 flex items-center gap-2 text-white">
-                  <Info size={16} /> Tips for submitting display name
-                </p>
-                <ul className="list-disc list-inside space-y-1 text-xs text-white/95">
-                  <li>Your display name must be same as your brand name on your website</li>
-                  <li>Our website should be operational</li>
-                  <li>Website that are coming soon or under construction may lead to rejection of display name</li>
-                  <li>It's recommended to mention the legal name of your company on the footer of your website</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* 4. Phone Number Status */}
-          <div>
-            <h4 className="text-md font-bold mb-4 border-b pb-2 border-gray-800 flex items-center gap-2">
-              <Smartphone size={18} className="text-gray-400" />
-              Phone Number Status
-            </h4>
-            <div className={cn("p-4 rounded-xl border", isDark ? "bg-gray-800/30 border-gray-700" : "bg-gray-50 border-gray-200")}>
-              <div className="flex items-center gap-3">
-                <div className={cn("w-3 h-3 rounded-full", 
-                  primaryPhone?.status === 'CONNECTED' ? "bg-[#5B45FF]0" : 
-                  primaryPhone?.status === 'PENDING' ? "bg-yellow-500" : 
-                  "bg-red-500"
-                )} />
-                <span className="font-bold text-lg">{primaryPhone?.status || 'DISCONNECTED'}</span>
-              </div>
-              <p className="text-sm text-gray-500 mt-2">
-                {primaryPhone?.status === 'CONNECTED' && "If a number is 'Connected', it means it's working perfectly."}
-                {primaryPhone?.status === 'PENDING' && "If a number is 'Pending', it means the connection status of the number is not known."}
-                {(!primaryPhone?.status || primaryPhone?.status === 'DISCONNECTED' || primaryPhone?.status === 'OFFLINE') && "If a number is 'Disconnected', it needs to be connected."}
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-md font-bold mb-4 border-b pb-2 border-gray-800 flex items-center gap-2">
-              <DatabaseIcon size={18} className="text-gray-400" />
-              WhatsApp Catalog
-            </h4>
-            <div className={cn("space-y-4 rounded-xl border p-4", isDark ? "bg-gray-800/30 border-gray-700" : "bg-gray-50 border-gray-200")}>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">
-                    {commerceSettings?.connected ? 'Catalog connected' : 'Catalog not connected'}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Link a Meta catalog so you can share products from the inbox using interactive WhatsApp product messages.
-                  </p>
-                </div>
-                {loadingCommerce && <RefreshCw size={16} className="animate-spin text-slate-400" />}
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className={cn("rounded-xl border p-3", isDark ? "border-gray-700 bg-gray-900/60" : "border-slate-200 bg-white")}>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Catalog ID</p>
-                  <input
-                    type="text"
-                    value={catalogIdInput}
-                    onChange={(e) => setCatalogIdInput(e.target.value)}
-                    placeholder="Enter Meta catalog ID"
-                    className={cn("mt-2 w-full rounded-xl border px-3 py-2 text-xs outline-none", isDark ? "border-gray-700 bg-gray-950 text-white" : "border-slate-200 bg-slate-50 text-slate-900")}
-                  />
-                  <p className="mt-2 text-[11px] text-slate-500">
-                    {catalogs.length > 0 ? `${catalogs.length} catalog${catalogs.length === 1 ? '' : 's'} found on this WABA.` : 'No catalogs were returned from this WABA yet.'}
-                  </p>
-                </div>
-
-                <div className={cn("rounded-xl border p-3", isDark ? "border-gray-700 bg-gray-900/60" : "border-slate-200 bg-white")}>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Detected Catalogs</p>
-                  <div className="mt-2 space-y-2">
-                    {catalogs.length === 0 && (
-                      <p className="text-xs text-slate-500">Create or connect a catalog in Meta Commerce Manager, then paste its ID here.</p>
-                    )}
-                    {catalogs.map((catalog) => (
-                      <button
-                        key={catalog.id}
-                        type="button"
-                        onClick={() => setCatalogIdInput(catalog.id)}
-                        className={cn("w-full rounded-xl border px-3 py-2 text-left transition-all", isDark ? "border-gray-700 bg-gray-950/80 hover:border-[#5B45FF]0" : "border-slate-200 bg-slate-50 hover:border-[#5B45FF]")}
-                      >
-                        <p className="text-xs font-semibold">{catalog.name}</p>
-                        <p className="mt-1 text-[10px] text-slate-500">{catalog.id}{catalog.vertical ? ` • ${catalog.vertical}` : ''}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setCatalogVisible((prev) => !prev)}
-                  className={cn(
-                    "flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium transition-all",
-                    catalogVisible
-                      ? "border-[#5B45FF]0/40 bg-[#5B45FF]0/10 text-[#5B45FF]0"
-                      : (isDark ? "border-gray-700 bg-gray-900/60 text-slate-200" : "border-slate-200 bg-white text-slate-600")
-                  )}
-                >
-                  <span>Catalog Visible</span>
-                  <span>{catalogVisible ? 'On' : 'Off'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCartEnabled((prev) => !prev)}
-                  className={cn(
-                    "flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium transition-all",
-                    cartEnabled
-                      ? "border-[#5B45FF]0/40 bg-[#5B45FF]0/10 text-[#5B45FF]0"
-                      : (isDark ? "border-gray-700 bg-gray-900/60 text-slate-200" : "border-slate-200 bg-white text-slate-600")
-                  )}
-                >
-                  <span>Cart Enabled</span>
-                  <span>{cartEnabled ? 'On' : 'Off'}</span>
-                </button>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleSaveCommerce}
-                  disabled={savingCommerce}
-                  className="inline-flex items-center justify-center rounded-xl bg-[#5B45FF]0 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#5B45FF] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {savingCommerce ? 'Saving...' : 'Save Catalog Connection'}
-                </button>
-                {commerceSettings?.catalogId && (
-                  <span className={cn("rounded-full px-3 py-1 text-[10px] font-semibold", isDark ? "bg-[#5B45FF]0/10 text-[#5B45FF]" : "bg-[#5B45FF] text-[#5B45FF]")}>
-                    Active catalog: {commerceSettings.catalogId}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-md font-bold mb-4 border-b pb-2 border-gray-800 flex items-center gap-2">
-              <Phone size={18} className="text-gray-400" />
-              WhatsApp Calls API
-            </h4>
-            <div className={cn("space-y-4 rounded-xl border p-4", isDark ? "bg-gray-800/30 border-gray-700" : "bg-gray-50 border-gray-200")}>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">
-                    {callingProbe?.enabled ? 'Calling API enabled' : 'Calling API not enabled'}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    WhatsApp Business Inbox is now checking the live Meta calling capability for this phone number before exposing any call controls.
-                  </p>
-                </div>
-                {loadingCallingProbe && <RefreshCw size={16} className="animate-spin text-slate-400" />}
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className={cn("rounded-xl border p-3", isDark ? "border-gray-700 bg-gray-900/60" : "border-slate-200 bg-white")}>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Live Meta Status</p>
-                  <p className={cn("mt-2 text-sm font-semibold", callingProbe?.enabled ? "text-[#5B45FF]0" : "text-amber-500")}>
-                    {callingProbe?.enabled ? 'Ready for permission checks' : (callingProbe?.permissionStatus || 'Unavailable')}
-                  </p>
-                  <p className="mt-2 text-xs leading-5 text-slate-500">
-                    {getCallPermissionMessage(callingProbe)}
-                  </p>
-                </div>
-
-                <div className={cn("rounded-xl border p-3", isDark ? "border-gray-700 bg-gray-900/60" : "border-slate-200 bg-white")}>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">What This Means</p>
-                  <p className="mt-2 text-xs leading-5 text-slate-500">
-                    WhatsApp calling is checked per user via `call_permissions`. If the permission state allows `start_call`, the dashboard can build an SDP offer and initiate a real call request for that contact.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 5. Quality Rating */}
-          <div className="xl:col-span-2">
-            <h4 className="text-md font-bold mb-4 border-b pb-2 border-gray-800 flex items-center gap-2">
-              <Activity size={18} className="text-gray-400" />
-              Quality Rating
-            </h4>
-            <div className={cn("p-4 rounded-xl border", isDark ? "bg-gray-800/30 border-gray-700" : "bg-gray-50 border-gray-200")}>
-              <div className="flex items-center gap-3 mb-4">
-                <div className={cn("px-3 py-1 rounded-full text-sm font-bold uppercase",
-                  primaryPhone?.qualityRating === 'GREEN' ? "bg-[#5B45FF]0/10 text-[#5B45FF]0" :
-                  primaryPhone?.qualityRating === 'YELLOW' ? "bg-yellow-500/10 text-yellow-500" :
-                  primaryPhone?.qualityRating === 'RED' ? "bg-red-500/10 text-red-500" :
-                  "bg-gray-500/10 text-gray-500"
-                )}>
-                  {primaryPhone?.qualityRating || 'UNKNOWN'}
-                </div>
-              </div>
-              
-              <div className="space-y-3 text-sm">
-                <div className={cn("flex items-start gap-2 p-3 rounded-lg", primaryPhone?.qualityRating === 'GREEN' ? (isDark ? "bg-[#5B45FF]/20" : "bg-[#5B45FF]") : "")}>
-                  <div className="w-2 h-2 rounded-full bg-[#5B45FF]0 mt-1.5 shrink-0" />
-                  <p><span className="font-bold">Green: High Quality</span> — Indicates strong message performance, minimal user complaints, and high user interaction (replies/clicks).</p>
-                </div>
-                <div className={cn("flex items-start gap-2 p-3 rounded-lg", primaryPhone?.qualityRating === 'YELLOW' ? (isDark ? "bg-yellow-900/20" : "bg-yellow-50") : "")}>
-                  <div className="w-2 h-2 rounded-full bg-yellow-500 mt-1.5 shrink-0" />
-                  <p><span className="font-bold">Yellow: Medium Quality</span> — Suggests moderate performance, with some user feedback indicating low engagement or minor complaints.</p>
-                </div>
-                <div className={cn("flex items-start gap-2 p-3 rounded-lg", primaryPhone?.qualityRating === 'RED' ? (isDark ? "bg-red-900/20" : "bg-red-50") : "")}>
-                  <div className="w-2 h-2 rounded-full bg-red-500 mt-1.5 shrink-0" />
-                  <p><span className="font-bold">Red: Low Quality</span> — Indicates poor performance and high user dissatisfaction (spam-like behavior, frequent blocks).</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-      )}
-    </motion.div>
   );
 }
 

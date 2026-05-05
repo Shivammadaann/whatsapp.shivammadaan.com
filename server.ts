@@ -360,16 +360,8 @@ const GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v25.0";
 const DEFAULT_APP_URL = "https://whatsapp.shivammadaan.com";
 const APP_URL = (process.env.APP_URL || DEFAULT_APP_URL).replace(/\/$/, "");
 const API_URL = (process.env.API_URL || APP_URL || DEFAULT_APP_URL).replace(/\/$/, "");
-const INSTAGRAM_APP_ID = process.env.INSTAGRAM_APP_ID || process.env.FACEBOOK_APP_ID || "";
-const INSTAGRAM_APP_SECRET = process.env.INSTAGRAM_APP_SECRET || process.env.FACEBOOK_APP_SECRET || "";
-const INSTAGRAM_OAUTH_SCOPES = [
-  "instagram_basic",
-  "instagram_manage_messages",
-  "pages_manage_metadata",
-  "pages_show_list",
-];
-const META_APP_ID = process.env.FACEBOOK_APP_ID || INSTAGRAM_APP_ID;
-const META_APP_SECRET = process.env.FACEBOOK_APP_SECRET || INSTAGRAM_APP_SECRET;
+const META_APP_ID = process.env.FACEBOOK_APP_ID || "";
+const META_APP_SECRET = process.env.FACEBOOK_APP_SECRET || "";
 const META_LEADS_OAUTH_SCOPES = [
   "pages_show_list",
   "pages_read_engagement",
@@ -379,7 +371,6 @@ const META_LEADS_OAUTH_SCOPES = [
   "leads_retrieval",
 ];
 const META_LEADS_TESTING_TOOL_URL = "https://developers.facebook.com/tools/lead-ads-testing";
-const instagramAuthStates = new Map<string, { userId: string; createdAt: number }>();
 const metaLeadAuthStates = new Map<string, { userId: string; createdAt: number }>();
 
 const base64UrlEncode = (value: string) =>
@@ -387,33 +378,6 @@ const base64UrlEncode = (value: string) =>
 
 const base64UrlDecode = (value: string) =>
   Buffer.from(value, "base64url").toString("utf8");
-
-const createInstagramState = (userId: string) => {
-  const nonce = Math.random().toString(36).slice(2);
-  const state = base64UrlEncode(JSON.stringify({ userId, nonce, createdAt: Date.now() }));
-  instagramAuthStates.set(state, { userId, createdAt: Date.now() });
-  return state;
-};
-
-const consumeInstagramState = (rawState?: string | null) => {
-  if (!rawState) return null;
-  const stateRecord = instagramAuthStates.get(rawState);
-  if (!stateRecord) return null;
-  instagramAuthStates.delete(rawState);
-  if (Date.now() - stateRecord.createdAt > 15 * 60 * 1000) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(base64UrlDecode(rawState));
-    if (parsed?.userId !== stateRecord.userId) {
-      return null;
-    }
-    return stateRecord.userId;
-  } catch {
-    return null;
-  }
-};
 
 const createMetaLeadState = (userId: string) => {
   const nonce = Math.random().toString(36).slice(2);
@@ -442,29 +406,13 @@ const consumeMetaLeadState = (rawState?: string | null) => {
   }
 };
 
-const buildInstagramRedirectUrl = (status: "success" | "error", message: string) =>
-  `${APP_URL}/whatsapp?tab=channel_status&channel=instagram&ig_status=${encodeURIComponent(status)}&ig_message=${encodeURIComponent(message)}`;
-
 const buildMetaLeadCaptureRedirectUrl = (status: "success" | "error", message: string) =>
   `${APP_URL}/crm?view=meta_setup&meta_status=${encodeURIComponent(status)}&meta_message=${encodeURIComponent(message)}`;
 
-const exchangeInstagramCodeForUserToken = async (code: string) => {
-  const response = await axios.get("https://graph.facebook.com/oauth/access_token", {
-    params: {
-      client_id: INSTAGRAM_APP_ID,
-      client_secret: INSTAGRAM_APP_SECRET,
-      redirect_uri: `${API_URL}/api/ig/auth/callback`,
-      code,
-    },
-  });
-
-  return response.data?.access_token as string;
-};
-
 const exchangeForLongLivedUserToken = async (
   shortLivedToken: string,
-  appId: string = INSTAGRAM_APP_ID,
-  appSecret: string = INSTAGRAM_APP_SECRET
+  appId: string,
+  appSecret: string
 ) => {
   const response = await axios.get(`https://graph.facebook.com/${GRAPH_VERSION}/oauth/access_token`, {
     params: {
@@ -766,33 +714,6 @@ const ingestMetaLeadForUser = async (
   };
 };
 
-const findInstagramPageConnection = async (userToken: string) => {
-  const pagesResponse = await axios.get(`https://graph.facebook.com/${GRAPH_VERSION}/me/accounts`, {
-    params: {
-      access_token: userToken,
-      fields: "id,name,access_token,instagram_business_account{id,username,name,profile_picture_url}",
-      limit: 50,
-    },
-  });
-
-  const pages = Array.isArray(pagesResponse.data?.data) ? pagesResponse.data.data : [];
-  const connectedPage = pages.find((page: any) => page.instagram_business_account?.id);
-
-  if (!connectedPage) {
-    return null;
-  }
-
-  return {
-    pageId: connectedPage.id as string,
-    pageName: connectedPage.name as string,
-    pageAccessToken: connectedPage.access_token as string,
-    instagramAccountId: connectedPage.instagram_business_account.id as string,
-    instagramUsername: connectedPage.instagram_business_account.username as string | undefined,
-    instagramName: connectedPage.instagram_business_account.name as string | undefined,
-    instagramProfilePictureUrl: connectedPage.instagram_business_account.profile_picture_url as string | undefined,
-  };
-};
-
 async function startServer() {
   const app = express();
   const server = http.createServer(app);
@@ -898,86 +819,6 @@ console.log(`${API_URL}/meta/webhook`);
   });
 
   app.use(express.json({ limit: "2mb" }));
-
-  app.get("/api/ig/auth/start", async (req, res) => {
-    const userId = typeof req.query.uid === "string" ? req.query.uid : "";
-
-    if (!INSTAGRAM_APP_ID || !INSTAGRAM_APP_SECRET) {
-      return res.status(500).json({ error: "Instagram app credentials are not configured on the server." });
-    }
-
-    if (!userId) {
-      return res.status(400).json({ error: "Missing uid query parameter." });
-    }
-
-    const authUrl = new URL(`https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth`);
-    authUrl.searchParams.set("client_id", INSTAGRAM_APP_ID);
-    authUrl.searchParams.set("redirect_uri", `${API_URL}/api/ig/auth/callback`);
-    authUrl.searchParams.set("scope", INSTAGRAM_OAUTH_SCOPES.join(","));
-    authUrl.searchParams.set("response_type", "code");
-    authUrl.searchParams.set("state", createInstagramState(userId));
-
-    return res.redirect(authUrl.toString());
-  });
-
-  app.get("/api/ig/auth/callback", async (req, res) => {
-    const code = typeof req.query.code === "string" ? req.query.code : "";
-    const errorReason = typeof req.query.error_reason === "string" ? req.query.error_reason : "";
-    const errorDescription = typeof req.query.error_description === "string" ? req.query.error_description : "";
-    const userId = consumeInstagramState(typeof req.query.state === "string" ? req.query.state : null);
-
-    if (errorReason || errorDescription) {
-      return res.redirect(buildInstagramRedirectUrl("error", errorDescription || errorReason || "Instagram connection was cancelled."));
-    }
-
-    if (!userId) {
-      return res.redirect(buildInstagramRedirectUrl("error", "Instagram login session expired. Please try again."));
-    }
-
-    if (!code) {
-      return res.redirect(buildInstagramRedirectUrl("error", "Instagram login did not return an authorization code."));
-    }
-
-    try {
-      const shortLivedToken = await exchangeInstagramCodeForUserToken(code);
-      const longLivedToken = await exchangeForLongLivedUserToken(shortLivedToken);
-      const connection = await findInstagramPageConnection(longLivedToken.accessToken);
-
-      if (!connection) {
-        return res.redirect(buildInstagramRedirectUrl("error", "No Instagram Business account was found on the connected Facebook Pages."));
-      }
-
-      await db.collection("users").doc(userId).set({
-        channelConnections: {
-          instagram: true,
-        },
-        instagramConnection: {
-          connected: true,
-          appId: INSTAGRAM_APP_ID,
-          pageId: connection.pageId,
-          pageName: connection.pageName,
-          pageAccessToken: connection.pageAccessToken,
-          userAccessToken: longLivedToken.accessToken,
-          userTokenExpiresIn: longLivedToken.expiresIn || null,
-          instagramAccountId: connection.instagramAccountId,
-          instagramUsername: connection.instagramUsername || null,
-          instagramName: connection.instagramName || null,
-          instagramProfilePictureUrl: connection.instagramProfilePictureUrl || null,
-          scopes: INSTAGRAM_OAUTH_SCOPES,
-          connectedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        toolSetup: {
-          instagram: true,
-        },
-      }, { merge: true });
-
-      return res.redirect(buildInstagramRedirectUrl("success", "Instagram Business account connected successfully."));
-    } catch (error: any) {
-      console.error("Instagram OAuth callback failed:", error.response?.data || error.message);
-      return res.redirect(buildInstagramRedirectUrl("error", "Instagram connection failed. Please verify your Meta app permissions and try again."));
-    }
-  });
 
   app.get("/api/meta/leads/auth/start", async (req, res) => {
     const userId = typeof req.query.uid === "string" ? req.query.uid : "";
@@ -1734,7 +1575,7 @@ console.log(`${API_URL}/meta/webhook`);
 
   app.post("/api/wa/upload-handle", multipartUpload.single("file"), async (req, res) => {
     const accessToken = getRequestAccessToken(req.headers.authorization);
-    const appId = String(req.body?.app_id || process.env.FACEBOOK_APP_ID || process.env.INSTAGRAM_APP_ID || "");
+    const appId = String(req.body?.app_id || process.env.FACEBOOK_APP_ID || "");
     const file = req.file;
 
     if (!accessToken) {
