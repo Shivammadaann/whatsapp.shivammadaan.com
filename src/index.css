@@ -293,27 +293,11 @@
       linear-gradient(180deg, #ffffff 0%, #f6f8fb 52%, #eef2f7 100%);
   }
 
-  .app-mesh-dark {
-    background:
-      radial-gradient(circle at top left, rgba(91, 69, 255, 0.18), transparent 30rem),
-      linear-gradient(180deg, #070b12 0%, #0b1220 54%, #080d16 100%);
-  }
-
   .chat-canvas-light {
     background-color: #efe7dd;
     background-image:
       linear-gradient(rgba(239, 231, 221, 0.5), rgba(239, 231, 221, 0.5)),
       url("../Light_Mode_Default_BG.png");
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: cover;
-  }
-
-  .chat-canvas-dark {
-    background-color: #0b1014;
-    background-image:
-      linear-gradient(rgba(11, 16, 20, 0.5), rgba(11, 16, 20, 0.5)),
-      url("../Dark_Mode_Default_BG.png");
     background-position: center;
     background-repeat: no-repeat;
     background-size: cover;

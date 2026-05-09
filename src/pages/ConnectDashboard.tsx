@@ -14,8 +14,6 @@ import {
   Send, 
   History, 
   Settings, 
-  Moon, 
-  Sun, 
   Users,
   LogOut,
   CheckCircle2,
@@ -532,6 +530,11 @@ const getConversationAvatarUrl = (contact: any) => getContactAvatarUrl(contact) 
 const normalizePhoneDigits = (value: string) => value.replace(/\D/g, '');
 const createCrmLeadId = () => `crm-inbox-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const MAX_CONTACT_AVATAR_BYTES = 5 * 1024 * 1024;
+const CONTACT_AVATAR_EXTENSIONS: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp'
+};
 
 const getCallLabel = (direction: CallDirection, status: CallStatus) => {
   if (status === 'missed') return direction === 'incoming' ? 'Missed voice call' : 'Missed outgoing call';
@@ -888,7 +891,7 @@ export default function ConnectDashboard() {
   const location = useLocation();
   const targetInboxPhone = useMemo(() => new URLSearchParams(location.search).get('target_phone') || '', [location.search]);
   const currentUserId = auth.currentUser?.uid;
-  const [isDark, setIsDark] = useState(false);
+  const isDark = false;
   const [activeTab, setActiveTab] = useState<TabType>('inbox');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -2712,7 +2715,7 @@ export default function ConnectDashboard() {
       </AnimatePresence>
       <div className={cn(
         "app-safe-screen transition-colors duration-300 flex flex-col md:flex-row relative overflow-hidden page-frame",
-        isDark ? "app-mesh-dark text-white" : "app-mesh-light text-slate-900"
+        "app-mesh-light text-slate-900"
       )}
       style={{ ['--connect-sidebar-width' as any]: isSidebarCollapsed ? '5.5rem' : 'var(--app-sidebar-width)' }}>
         <div className={cn(
@@ -2918,15 +2921,6 @@ export default function ConnectDashboard() {
                 <span className="opacity-50">|</span>
                 <span className="font-bold">{connectedNumberHealth}</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsDark((prev) => !prev)}
-                className="app-header-action-secondary inline-flex h-10 items-center justify-center gap-2 rounded-2xl px-3 text-xs font-bold transition-all md:px-4"
-              >
-                {isDark ? <Sun size={16} /> : <Moon size={16} />}
-                {isDark ? 'Light' : 'Dark'}
-              </button>
-
               {accountAvatar ? (
                 <img
                   src={accountAvatar}
@@ -2994,8 +2988,6 @@ export default function ConnectDashboard() {
             {activeTab === 'settings' && (
               <SettingsSection
                 isDark={isDark}
-                isDarkMode={isDark}
-                setIsDarkMode={setIsDark}
                 currentUserProfile={currentUserProfile}
                 setCurrentUserProfile={setCurrentUserProfile}
                 notificationSettings={notificationSettings}
@@ -5312,7 +5304,7 @@ function InboxSection({
               ref={messagesViewportRef}
               className={cn(
                 "flex-1 p-3.5 md:p-4 overflow-y-auto space-y-3 relative no-scrollbar",
-                isDark ? "chat-canvas-dark" : "chat-canvas-light"
+                "chat-canvas-light"
               )}
             >
               <div className="relative z-0 space-y-3">
@@ -5967,7 +5959,7 @@ function InboxSection({
         ) : (
           <div className={cn(
             "flex-1 flex flex-col items-center justify-center p-8 text-center relative",
-            isDark ? "chat-canvas-dark" : "chat-canvas-light"
+            "chat-canvas-light"
           )}>
             <div className="relative z-10 flex flex-col items-center">
               <div className={cn("w-16 h-16 rounded-full flex items-center justify-center mb-4", isDark ? "bg-gray-800" : "bg-white shadow-sm")}>
@@ -7676,8 +7668,8 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
     event.target.value = '';
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      showAppDialog({ tone: 'warning', message: 'Please choose an image file for the contact picture.' });
+    if (!CONTACT_AVATAR_EXTENSIONS[file.type]) {
+      showAppDialog({ tone: 'warning', message: 'Please choose a JPG, PNG, or WebP image for the contact picture.' });
       return;
     }
 
@@ -7697,7 +7689,7 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
       return '';
     }
 
-    const extension = contactAvatarFile.name.split('.').pop()?.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg';
+    const extension = CONTACT_AVATAR_EXTENSIONS[contactAvatarFile.type] || 'jpg';
     const avatarRef = storageRef(
       storage,
       `users/${auth.currentUser.uid}/contacts/${contactId}/profile-picture-${Date.now()}.${extension}`
@@ -7999,9 +7991,9 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
                   <label className={cn("inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all", isDark ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-100 hover:bg-gray-200")}>
                     <Camera size={16} />
                     Upload Picture
-                    <input type="file" accept="image/*" className="hidden" onChange={handleContactAvatarUpload} />
+                    <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleContactAvatarUpload} />
                   </label>
-                  <p className="mt-2 text-xs text-gray-500">Square JPG or PNG, up to 5 MB.</p>
+                  <p className="mt-2 text-xs text-gray-500">Square JPG, PNG, or WebP, up to 5 MB.</p>
                 </div>
               </div>
               <div>
@@ -10228,15 +10220,11 @@ function ProfileSection({ isDark }: { isDark: boolean }) {
 
 function SettingsSection({
   isDark,
-  isDarkMode,
-  setIsDarkMode,
   currentUserProfile,
   setCurrentUserProfile,
   notificationSettings
 }: {
   isDark: boolean,
-  isDarkMode: boolean,
-  setIsDarkMode: React.Dispatch<React.SetStateAction<boolean>>,
   currentUserProfile: any,
   setCurrentUserProfile: React.Dispatch<React.SetStateAction<any>>,
   notificationSettings: NotificationSettings
@@ -10425,52 +10413,6 @@ function SettingsSection({
                   className={cn("w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]", isDark ? "border-gray-700 bg-gray-800 text-white" : "border-slate-200 bg-slate-50 text-slate-900")}
                 />
               </div>
-            </div>
-          </div>
-        </div>
-
-        <div className={cn("rounded-2xl md:rounded-3xl p-6 md:p-8 border", isDark ? "bg-[#111827] border-gray-800" : "bg-white border-gray-200 shadow-sm")}>
-          <div className="flex items-center gap-3 mb-6">
-            {isDarkMode ? <Moon className="text-cyan-400" /> : <Sun className="text-amber-400" />}
-            <h3 className="text-lg md:text-xl font-bold">Appearance</h3>
-          </div>
-          <div className="space-y-4">
-            <p className={cn("text-sm", isDark ? "text-gray-400" : "text-gray-600")}>
-              Choose the dashboard theme that feels best for your workflow.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => setIsDarkMode(false)}
-                className={cn(
-                  "rounded-2xl border p-4 text-left transition-all",
-                  !isDarkMode
-                    ? "border-[#5B45FF] bg-[#5B45FF]/10"
-                    : (isDark ? "border-gray-700 hover:border-gray-600" : "border-gray-200 hover:border-gray-300")
-                )}
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <Sun className="text-amber-400" size={18} />
-                  <span className="font-bold">Light Mode</span>
-                </div>
-                <p className="text-xs text-gray-500">Bright, clean, and ideal for daytime work.</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsDarkMode(true)}
-                className={cn(
-                  "rounded-2xl border p-4 text-left transition-all",
-                  isDarkMode
-                    ? "border-[#5B45FF] bg-[#5B45FF]/10"
-                    : (isDark ? "border-gray-700 hover:border-gray-600" : "border-gray-200 hover:border-gray-300")
-                )}
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <Moon className="text-cyan-400" size={18} />
-                  <span className="font-bold">Dark Mode</span>
-                </div>
-                <p className="text-xs text-gray-500">Softer contrast for long sessions and low-light work.</p>
-              </button>
             </div>
           </div>
         </div>

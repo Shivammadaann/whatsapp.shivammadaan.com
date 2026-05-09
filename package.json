@@ -9,7 +9,8 @@
     "start": "tsx server.ts",
     "preview": "vite preview",
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "storage:cors": "gcloud storage buckets update gs://connektly.firebasestorage.app --cors-file=storage.cors.json"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
