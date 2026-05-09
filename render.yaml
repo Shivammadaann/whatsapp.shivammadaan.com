@@ -25,6 +25,8 @@ services:
         sync: false
       - key: VITE_FACEBOOK_CONFIG_ID
         sync: false
+      - key: WHATSAPP_TWO_STEP_PIN
+        sync: false
       - key: META_VERIFY_TOKEN
         sync: false
       - key: WHATSAPP_WEBHOOK_VERIFY_TOKEN

@@ -3389,8 +3389,7 @@ function OnboardingSection({ isDark, handleLogout }: { isDark: boolean, handleLo
               window.FB.getLoginStatus((statusResponse: any) => resolve(statusResponse));
             })
           : response;
-        const authResponse = latestResponse?.authResponse || response?.authResponse;
-        const code = authResponse?.code;
+        const code = response?.authResponse?.code || latestResponse?.authResponse?.code;
 
         if (code) {
           
@@ -3417,7 +3416,20 @@ function OnboardingSection({ isDark, handleLogout }: { isDark: boolean, handleLo
                 whatsappCredentials: {
                   accessToken: data.accessToken,
                   phoneNumberId: data.phoneNumberId,
-                  businessAccountId: data.wabaId
+                  businessAccountId: data.wabaId,
+                  twoStepVerificationPin: data.twoStepVerificationPin || null,
+                  registrationStatus: data.provisioning?.registration?.success ? 'registered' : 'pending',
+                  registeredAt: data.provisioning?.registeredAt || null
+                },
+                whatsappProvisioning: {
+                  twoStepVerification: data.provisioning?.twoStepVerification || null,
+                  registration: data.provisioning?.registration || null,
+                  subscribedApps: data.provisioning?.subscribedApps || null,
+                  phoneNumberStatus: data.provisioning?.phoneNumberStatus || null,
+                  updatedAt: new Date().toISOString()
+                },
+                toolSetup: {
+                  whatsapp: true
                 }
               }, { merge: true });
               
@@ -8678,6 +8690,7 @@ function ChannelStatusSection({ isDark, currentUserProfile }: { isDark: boolean,
   const [loadingCommerce, setLoadingCommerce] = useState(false);
   const [callingProbe, setCallingProbe] = useState<WhatsAppCallingProbe | null>(null);
   const [loadingCallingProbe, setLoadingCallingProbe] = useState(false);
+  const [provisioningNumber, setProvisioningNumber] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -8890,6 +8903,74 @@ function ChannelStatusSection({ isDark, currentUserProfile }: { isDark: boolean,
     }
   };
 
+  const handleProvisionNumber = async () => {
+    if (!auth.currentUser || !targetPhoneId || !connectedWabaId) return;
+
+    const currentCredentials = whatsappService.getCredentials();
+    if (!currentCredentials.ACCESS_TOKEN) {
+      showAppDialog({ tone: 'warning', message: 'No WhatsApp access token is available for this workspace.' });
+      return;
+    }
+
+    setProvisioningNumber(true);
+    try {
+      const response = await fetch(buildBackendUrl('/api/wa/provision-phone-number'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${currentCredentials.ACCESS_TOKEN}`
+        },
+        body: JSON.stringify({
+          wabaId: connectedWabaId,
+          phoneNumberId: targetPhoneId,
+          pin: currentUserProfile?.whatsappCredentials?.twoStepVerificationPin || ''
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.details?.registration?.error?.message || data.error || 'WhatsApp number registration failed.');
+      }
+
+      await setDoc(doc(db, 'users', auth.currentUser.uid), {
+        whatsappCredentials: {
+          accessToken: currentCredentials.ACCESS_TOKEN,
+          phoneNumberId: targetPhoneId,
+          businessAccountId: connectedWabaId,
+          twoStepVerificationPin: data.twoStepVerificationPin || currentUserProfile?.whatsappCredentials?.twoStepVerificationPin || null,
+          registrationStatus: data.provisioning?.registration?.success ? 'registered' : 'pending',
+          registeredAt: data.provisioning?.registeredAt || null
+        },
+        whatsappProvisioning: {
+          twoStepVerification: data.provisioning?.twoStepVerification || null,
+          registration: data.provisioning?.registration || null,
+          subscribedApps: data.provisioning?.subscribedApps || null,
+          phoneNumberStatus: data.provisioning?.phoneNumberStatus || null,
+          updatedAt: new Date().toISOString()
+        },
+        toolSetup: {
+          whatsapp: true
+        }
+      }, { merge: true });
+
+      whatsappService.setCredentials(currentCredentials.ACCESS_TOKEN, targetPhoneId, connectedWabaId);
+
+      const [accounts, phones] = await Promise.all([
+        whatsappService.getBusinessAccounts(),
+        whatsappService.getPhoneNumbers()
+      ]);
+      setBusinessAccounts(accounts);
+      setPhoneNumbers(phones);
+
+      showAppDialog({ tone: 'success', message: 'WhatsApp number registration completed.' });
+    } catch (error: any) {
+      console.error('Failed to provision WhatsApp number:', error);
+      showAppDialog({ tone: 'error', message: error.message || 'Unable to register the WhatsApp number right now.' });
+    } finally {
+      setProvisioningNumber(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -8966,20 +9047,33 @@ function ChannelStatusSection({ isDark, currentUserProfile }: { isDark: boolean,
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => void handleDisconnect()}
-            disabled={disconnecting}
-            className={cn(
-              "inline-flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-sm font-bold transition-all disabled:cursor-not-allowed disabled:opacity-50",
-              isDark
-                ? "border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/15"
-                : "border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
+          <div className="flex flex-wrap items-center gap-3">
+            {primaryPhone?.status !== 'CONNECTED' && (
+              <button
+                type="button"
+                onClick={() => void handleProvisionNumber()}
+                disabled={provisioningNumber || !targetPhoneId || !connectedWabaId}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#5B45FF] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]/20 transition-all hover:bg-[#4b38df] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RefreshCw size={16} className={cn(provisioningNumber && "animate-spin")} />
+                {provisioningNumber ? 'Registering...' : 'Retry Registration'}
+              </button>
             )}
-          >
-            <Trash2 size={16} />
-            {disconnecting ? 'Disconnecting...' : 'Disconnect WABA'}
-          </button>
+            <button
+              type="button"
+              onClick={() => void handleDisconnect()}
+              disabled={disconnecting}
+              className={cn(
+                "inline-flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-sm font-bold transition-all disabled:cursor-not-allowed disabled:opacity-50",
+                isDark
+                  ? "border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/15"
+                  : "border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
+              )}
+            >
+              <Trash2 size={16} />
+              {disconnecting ? 'Disconnecting...' : 'Disconnect WABA'}
+            </button>
+          </div>
         </div>
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">

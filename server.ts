@@ -7,6 +7,7 @@ import axios from "axios";
 import http from "http";
 import fs from "fs";
 import multer from "multer";
+import { randomInt } from "crypto";
 
 import { firebaseAdminContext, firebaseAdminDb } from "./firebaseAdmin";
 
@@ -35,6 +36,201 @@ const getWebhookVerifyToken = () =>
 const getRequestAccessToken = (authorizationHeader?: string | string[]) => {
   const rawValue = Array.isArray(authorizationHeader) ? authorizationHeader[0] : authorizationHeader;
   return String(rawValue || "").replace(/^Bearer\s+/i, "").trim();
+};
+
+type MetaGraphCallResult = {
+  success: boolean;
+  status?: number;
+  data?: any;
+  error?: {
+    status?: number;
+    code?: string | number;
+    subcode?: string | number;
+    type?: string;
+    message: string;
+  };
+};
+
+const getMetaGraphError = (error: any): MetaGraphCallResult["error"] => {
+  const graphError = error?.response?.data?.error || {};
+  return {
+    status: error?.response?.status,
+    code: graphError.code,
+    subcode: graphError.error_subcode,
+    type: graphError.type,
+    message: graphError.message || error?.message || "Unknown Meta Graph API error"
+  };
+};
+
+const getWhatsAppTwoStepPin = (requestedPin?: string) => {
+  const explicitPin = String(requestedPin || "").trim();
+  const configuredPin = String(
+    process.env.WHATSAPP_TWO_STEP_PIN ||
+    process.env.WHATSAPP_2FA_PIN ||
+    ""
+  ).trim();
+
+  if (explicitPin) {
+    if (!/^\d{6}$/.test(explicitPin)) {
+      throw new Error("WhatsApp two-step verification PIN must be exactly 6 digits.");
+    }
+
+    return { pin: explicitPin, source: "request" as const };
+  }
+
+  if (configuredPin) {
+    if (!/^\d{6}$/.test(configuredPin)) {
+      throw new Error("WHATSAPP_TWO_STEP_PIN must be exactly 6 digits.");
+    }
+
+    return { pin: configuredPin, source: "env" as const };
+  }
+
+  return {
+    pin: randomInt(0, 1_000_000).toString().padStart(6, "0"),
+    source: "generated" as const
+  };
+};
+
+const setWhatsAppTwoStepPin = async (phoneNumberId: string, accessToken: string, pin: string): Promise<MetaGraphCallResult> => {
+  try {
+    const response = await axios.post(`https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}`, {
+      pin
+    }, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    return {
+      success: true,
+      status: response.status,
+      data: response.data
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      status: error?.response?.status,
+      error: getMetaGraphError(error)
+    };
+  }
+};
+
+const registerWhatsAppPhoneNumber = async (phoneNumberId: string, accessToken: string, pin: string): Promise<MetaGraphCallResult> => {
+  try {
+    const response = await axios.post(`https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/register`, {
+      messaging_product: "whatsapp",
+      pin
+    }, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    return {
+      success: true,
+      status: response.status,
+      data: response.data
+    };
+  } catch (error: any) {
+    const graphError = getMetaGraphError(error);
+    const alreadyRegistered = /already\s+(registered|connected)|has already been registered|phone number is already/i.test(graphError?.message || "");
+
+    return {
+      success: alreadyRegistered,
+      status: error?.response?.status,
+      data: alreadyRegistered ? { alreadyRegistered: true } : undefined,
+      error: alreadyRegistered ? undefined : graphError
+    };
+  }
+};
+
+const subscribeWhatsAppBusinessAccount = async (wabaId: string, accessToken: string): Promise<MetaGraphCallResult> => {
+  try {
+    const response = await axios.post(`https://graph.facebook.com/${GRAPH_VERSION}/${wabaId}/subscribed_apps`, null, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    return {
+      success: true,
+      status: response.status,
+      data: response.data
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      status: error?.response?.status,
+      error: getMetaGraphError(error)
+    };
+  }
+};
+
+const getWhatsAppPhoneNumberStatus = async (phoneNumberId: string, accessToken: string): Promise<MetaGraphCallResult> => {
+  try {
+    const response = await axios.get(`https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}`, {
+      params: {
+        fields: "id,display_phone_number,verified_name,quality_rating,status,name_status,code_verification_status"
+      },
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    return {
+      success: true,
+      status: response.status,
+      data: response.data
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      status: error?.response?.status,
+      error: getMetaGraphError(error)
+    };
+  }
+};
+
+const provisionEmbeddedSignupPhoneNumber = async (options: {
+  accessToken: string;
+  wabaId: string;
+  phoneNumberId: string;
+  pin?: string;
+}) => {
+  const { accessToken, wabaId, phoneNumberId } = options;
+  const { pin, source } = getWhatsAppTwoStepPin(options.pin);
+
+  console.log(`Embedded signup provisioning: setting two-step verification for phone_number_id=${phoneNumberId}`);
+  const twoStepVerification = await setWhatsAppTwoStepPin(phoneNumberId, accessToken, pin);
+
+  if (!twoStepVerification.success) {
+    console.warn("Embedded signup two-step verification setup failed:", twoStepVerification.error);
+  }
+
+  console.log(`Embedded signup provisioning: registering phone_number_id=${phoneNumberId}`);
+  const registration = await registerWhatsAppPhoneNumber(phoneNumberId, accessToken, pin);
+
+  console.log(`Embedded signup provisioning: subscribing WABA webhooks for waba_id=${wabaId}`);
+  const subscribedApps = await subscribeWhatsAppBusinessAccount(wabaId, accessToken);
+
+  if (!subscribedApps.success) {
+    console.warn("Embedded signup WABA webhook subscription failed:", subscribedApps.error);
+  }
+
+  const phoneNumberStatus = await getWhatsAppPhoneNumberStatus(phoneNumberId, accessToken);
+
+  return {
+    twoStepVerificationPin: pin,
+    twoStepVerificationPinSource: source,
+    twoStepVerification,
+    registration,
+    subscribedApps,
+    phoneNumberStatus,
+    registeredAt: registration.success ? new Date().toISOString() : null
+  };
 };
 
 const isFirebaseSessionTokenError = (error: any) => {
@@ -1557,17 +1753,104 @@ console.log(`${API_URL}/meta/webhook`);
         phoneNumbers = [{ id: phoneNumberId }];
       }
 
+      if (!phoneNumberId) {
+        return res.status(400).json({ error: "No WhatsApp phone number ID was returned by embedded signup." });
+      }
+
+      const provisioning = await provisionEmbeddedSignupPhoneNumber({
+        accessToken,
+        wabaId,
+        phoneNumberId
+      });
+
+      if (!provisioning.registration.success) {
+        return res.status(provisioning.registration.status || 502).json({
+          error: provisioning.registration.error?.message || "WhatsApp phone number registration failed.",
+          details: {
+            twoStepVerification: provisioning.twoStepVerification,
+            registration: provisioning.registration,
+            subscribedApps: provisioning.subscribedApps,
+            phoneNumberStatus: provisioning.phoneNumberStatus
+          }
+        });
+      }
+
       res.json({
         accessToken,
         wabaId,
         phoneNumberId,
-        phoneNumbers
+        phoneNumbers,
+        twoStepVerificationPin: provisioning.twoStepVerificationPin,
+        provisioning: {
+          twoStepVerificationPinSource: provisioning.twoStepVerificationPinSource,
+          twoStepVerification: provisioning.twoStepVerification,
+          registration: provisioning.registration,
+          subscribedApps: provisioning.subscribedApps,
+          phoneNumberStatus: provisioning.phoneNumberStatus,
+          registeredAt: provisioning.registeredAt
+        }
       });
     } catch (error: any) {
       console.error("Embedded signup error:", error.response?.data || error.message);
       const graphErrorMessage = error.response?.data?.error?.message;
       res.status(500).json({
         error: graphErrorMessage || "Failed to process embedded signup",
+        details: error.response?.data
+      });
+    }
+  });
+
+  app.post("/api/wa/provision-phone-number", async (req, res) => {
+    const accessToken = getRequestAccessToken(req.headers.authorization);
+    const wabaId = String(req.body?.wabaId || req.body?.businessAccountId || "").trim();
+    const phoneNumberId = String(req.body?.phoneNumberId || "").trim();
+    const pin = typeof req.body?.pin === "string" ? req.body.pin.trim() : "";
+
+    if (!accessToken) {
+      return res.status(401).json({ error: "No WhatsApp access token provided for this workspace" });
+    }
+
+    if (!wabaId || !phoneNumberId) {
+      return res.status(400).json({ error: "Missing wabaId or phoneNumberId for WhatsApp provisioning." });
+    }
+
+    try {
+      const provisioning = await provisionEmbeddedSignupPhoneNumber({
+        accessToken,
+        wabaId,
+        phoneNumberId,
+        pin
+      });
+
+      if (!provisioning.registration.success) {
+        return res.status(provisioning.registration.status || 502).json({
+          error: provisioning.registration.error?.message || "WhatsApp phone number registration failed.",
+          details: {
+            twoStepVerification: provisioning.twoStepVerification,
+            registration: provisioning.registration,
+            subscribedApps: provisioning.subscribedApps,
+            phoneNumberStatus: provisioning.phoneNumberStatus
+          }
+        });
+      }
+
+      return res.json({
+        wabaId,
+        phoneNumberId,
+        twoStepVerificationPin: provisioning.twoStepVerificationPin,
+        provisioning: {
+          twoStepVerificationPinSource: provisioning.twoStepVerificationPinSource,
+          twoStepVerification: provisioning.twoStepVerification,
+          registration: provisioning.registration,
+          subscribedApps: provisioning.subscribedApps,
+          phoneNumberStatus: provisioning.phoneNumberStatus,
+          registeredAt: provisioning.registeredAt
+        }
+      });
+    } catch (error: any) {
+      console.error("WhatsApp provisioning retry failed:", error.response?.data || error.message);
+      return res.status(error.response?.status || 500).json({
+        error: error.response?.data?.error?.message || error.message || "WhatsApp provisioning retry failed.",
         details: error.response?.data
       });
     }
