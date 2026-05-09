@@ -120,7 +120,7 @@ function WhatsAppCallsIcon({ size = 18 }: { size?: number }) {
   return <BrandImageIcon src={whatsappCallsLogo} alt="WhatsApp Calls" size={size} />;
 }
 
-type TabType = 'inbox' | 'calls' | 'broadcast' | 'templates' | 'contacts' | 'automations' | 'profile' | 'settings';
+type TabType = 'inbox' | 'calls' | 'broadcast' | 'templates' | 'contacts' | 'automations' | 'profile' | 'channel_status' | 'settings';
 type CallDirection = 'incoming' | 'outgoing';
 type CallStatus = 'ringing' | 'missed' | 'ongoing' | 'ended' | 'failed';
 type CallFilter = 'all' | 'missed' | 'incoming' | 'outgoing';
@@ -1644,7 +1644,7 @@ export default function ConnectDashboard() {
     const params = new URLSearchParams(location.search);
     const requestedTab = params.get('tab');
 
-    if (requestedTab && ['inbox', 'calls', 'broadcast', 'templates', 'contacts', 'automations', 'profile', 'settings'].includes(requestedTab)) {
+    if (requestedTab && ['inbox', 'calls', 'broadcast', 'templates', 'contacts', 'automations', 'profile', 'channel_status', 'settings'].includes(requestedTab)) {
       setActiveTab(requestedTab as TabType);
     }
   }, [location.search]);
@@ -2380,7 +2380,8 @@ export default function ConnectDashboard() {
       contacts: { title: 'Contacts', description: 'Organize customers, import lists, and keep relationship data clean.' },
       automations: { title: 'Automations', description: 'Design repeatable flows for follow-ups, routing, and routine work.' },
       settings: { title: 'Settings', description: 'Manage workspace access, account configuration, and admin controls.' },
-      profile: { title: 'Business Profile', description: 'Polish your public business presence and verify key brand details.' }
+      profile: { title: 'Business Profile', description: 'Polish your public business presence and verify key brand details.' },
+      channel_status: { title: 'Channels', description: 'Manage WhatsApp channel health, WABA connection, catalog, and calling readiness.' }
     };
 
     return tabConfig[activeTab];
@@ -2428,6 +2429,10 @@ export default function ConnectDashboard() {
       profile: [
         { label: 'Business profile', value: accountInfo?.whatsappName || 'Pending' },
         { label: 'Phone ID', value: accountInfo?.phoneId ? 'Connected' : 'Pending' }
+      ],
+      channel_status: [
+        { label: 'Connected numbers', value: phoneNumbers.length.toLocaleString() },
+        { label: 'WABA status', value: String(accountInfo?.status || phoneNumbers[0]?.status || 'Unknown') }
       ]
     };
 
@@ -2824,6 +2829,14 @@ export default function ConnectDashboard() {
             collapsed={isSidebarCollapsed}
           />
           <NavItem 
+            icon={<Activity size={20} />} 
+            label="Channels" 
+            active={activeTab === 'channel_status'} 
+            onClick={() => { setActiveTab('channel_status'); setIsSidebarOpen(false); }}
+            isDark={isDark}
+            collapsed={isSidebarCollapsed}
+          />
+          <NavItem 
             icon={<Settings size={20} />} 
             label="Settings" 
             active={activeTab === 'settings'} 
@@ -2845,7 +2858,7 @@ export default function ConnectDashboard() {
             ) : (
               <div className={cn(
                 "flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-black",
-                isDark ? "bg-[#5B45FF]0/15 text-[#5B45FF]" : "bg-[#5B45FF] text-[#5B45FF]"
+                isDark ? "bg-[#5B45FF]/15 text-[#5B45FF]" : "bg-[#5B45FF] text-white"
               )}>
                 {(currentUserProfile?.displayName || auth.currentUser?.displayName || '?')[0]}
               </div>
@@ -2979,6 +2992,7 @@ export default function ConnectDashboard() {
             {activeTab === 'contacts' && <ContactsSection isDark={isDark} contacts={contacts} />}
             {activeTab === 'automations' && <AutomationsSection isDark={isDark} />}
             {activeTab === 'profile' && <ProfileSection isDark={isDark} />}
+            {activeTab === 'channel_status' && <ChannelStatusSection isDark={isDark} currentUserProfile={currentUserProfile} />}
             {activeTab === 'settings' && (
               <SettingsSection
                 isDark={isDark}
@@ -4586,7 +4600,7 @@ function InboxSection({
     }
 
     if (!connectedCatalogId) {
-      showAppDialog({ tone: 'warning', message: 'Connect a WhatsApp catalog first from Channel Status.' });
+      showAppDialog({ tone: 'warning', message: 'Connect a WhatsApp catalog first from Channels.' });
       return;
     }
 
@@ -5688,7 +5702,7 @@ function InboxSection({
                         <div>
                           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">WhatsApp Catalog</p>
                           <p className="mt-1 text-xs text-slate-500">
-                            {connectedCatalogId ? `Catalog ID: ${connectedCatalogId}` : 'Connect a catalog from Channel Status first.'}
+                            {connectedCatalogId ? `Catalog ID: ${connectedCatalogId}` : 'Connect a catalog from Channels first.'}
                           </p>
                         </div>
                         {catalogProductsLoading && <RefreshCw size={14} className="animate-spin text-slate-400" />}
@@ -8649,6 +8663,509 @@ function TriggerLine({ title, copy, isDark }: { title: string; copy: string; isD
   );
 }
 
+function ChannelStatusSection({ isDark, currentUserProfile }: { isDark: boolean, currentUserProfile: any }) {
+  const [businessAccounts, setBusinessAccounts] = useState<any[]>([]);
+  const [phoneNumbers, setPhoneNumbers] = useState<WhatsAppPhoneNumber[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [targetPhoneId, setTargetPhoneId] = useState<string>(whatsappService.getCredentials().PHONE_NUMBER_ID);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [catalogs, setCatalogs] = useState<Array<{ id: string; name: string; vertical?: string }>>([]);
+  const [commerceSettings, setCommerceSettings] = useState<WhatsAppCommerceSettings | null>(null);
+  const [catalogIdInput, setCatalogIdInput] = useState(currentUserProfile?.whatsappCatalogConnection?.catalogId || '');
+  const [catalogVisible, setCatalogVisible] = useState(Boolean(currentUserProfile?.whatsappCatalogConnection?.isCatalogVisible));
+  const [cartEnabled, setCartEnabled] = useState(Boolean(currentUserProfile?.whatsappCatalogConnection?.isCartEnabled));
+  const [savingCommerce, setSavingCommerce] = useState(false);
+  const [loadingCommerce, setLoadingCommerce] = useState(false);
+  const [callingProbe, setCallingProbe] = useState<WhatsAppCallingProbe | null>(null);
+  const [loadingCallingProbe, setLoadingCallingProbe] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadData() {
+      setLoading(true);
+      try {
+        const [accounts, phones, availableCatalogs] = await Promise.all([
+          whatsappService.getBusinessAccounts(),
+          whatsappService.getPhoneNumbers(),
+          whatsappService.getCatalogs()
+        ]);
+
+        if (cancelled) return;
+
+        setBusinessAccounts(accounts);
+        setPhoneNumbers(phones);
+        setCatalogs(availableCatalogs);
+
+        const preferredPhoneId = targetPhoneId || whatsappService.getCredentials().PHONE_NUMBER_ID || phones[0]?.phoneId || '';
+        if (preferredPhoneId) {
+          setTargetPhoneId(preferredPhoneId);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load channel status data", error);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!targetPhoneId) return;
+
+    let cancelled = false;
+
+    const loadCapabilityData = async () => {
+      setLoadingCommerce(true);
+      setLoadingCallingProbe(true);
+
+      try {
+        const [liveCommerceSettings, liveCallingProbe] = await Promise.all([
+          whatsappService.getCommerceSettings(targetPhoneId),
+          whatsappService.probeCallingApi(targetPhoneId)
+        ]);
+
+        if (cancelled) return;
+
+        const effectiveCommerce = liveCommerceSettings || {
+          connected: Boolean(currentUserProfile?.whatsappCatalogConnection?.catalogId),
+          catalogId: currentUserProfile?.whatsappCatalogConnection?.catalogId || '',
+          isCatalogVisible: Boolean(currentUserProfile?.whatsappCatalogConnection?.isCatalogVisible),
+          isCartEnabled: Boolean(currentUserProfile?.whatsappCatalogConnection?.isCartEnabled)
+        };
+
+        setCommerceSettings(effectiveCommerce);
+        setCatalogIdInput(effectiveCommerce?.catalogId || currentUserProfile?.whatsappCatalogConnection?.catalogId || '');
+        setCatalogVisible(Boolean(effectiveCommerce?.isCatalogVisible));
+        setCartEnabled(Boolean(effectiveCommerce?.isCartEnabled));
+        setCallingProbe(liveCallingProbe);
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to load channel capability data:', error);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingCommerce(false);
+          setLoadingCallingProbe(false);
+        }
+      }
+    };
+
+    loadCapabilityData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    targetPhoneId,
+    currentUserProfile?.whatsappCatalogConnection?.catalogId,
+    currentUserProfile?.whatsappCatalogConnection?.isCatalogVisible,
+    currentUserProfile?.whatsappCatalogConnection?.isCartEnabled
+  ]);
+
+  const primaryPhone = phoneNumbers.find((phone) => phone.phoneId === targetPhoneId) || phoneNumbers[0];
+  const primaryAccount = businessAccounts.find((account) => account.id === primaryPhone?.wabaId) || businessAccounts[0];
+  const credentials = whatsappService.getCredentials();
+  const connectedWabaId = primaryPhone?.wabaId || primaryAccount?.id || credentials.BUSINESS_ACCOUNT_ID || currentUserProfile?.whatsappCredentials?.businessAccountId || '';
+  const accountName = primaryAccount?.businessName || primaryAccount?.name || currentUserProfile?.companyName || 'WhatsApp Business Account';
+  const messagingTier = primaryPhone?.whatsappBusinessManagerMessagingLimit || primaryPhone?.messagingLimitTier || 'Unknown';
+  const messageLimitLabel =
+    messagingTier === 'TIER_50' ? '50' :
+    messagingTier === 'TIER_250' ? '250' :
+    messagingTier === 'TIER_1K' ? '1,000' :
+    messagingTier === 'TIER_10K' ? '10,000' :
+    messagingTier === 'TIER_100K' ? '100,000' :
+    messagingTier === 'TIER_UNLIMITED' ? 'Unlimited' :
+    messagingTier;
+
+  const handleNumberChange = async (newPhoneId: string) => {
+    setTargetPhoneId(newPhoneId);
+    try {
+      if (auth.currentUser) {
+        const currentCredentials = whatsappService.getCredentials();
+        await setDoc(doc(db, 'users', auth.currentUser.uid), {
+          whatsappCredentials: {
+            accessToken: currentCredentials.ACCESS_TOKEN,
+            businessAccountId: currentCredentials.BUSINESS_ACCOUNT_ID,
+            phoneNumberId: newPhoneId
+          }
+        }, { merge: true });
+        whatsappService.setCredentials(currentCredentials.ACCESS_TOKEN, newPhoneId, currentCredentials.BUSINESS_ACCOUNT_ID);
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser?.uid}`);
+      console.error('Failed to update connected WhatsApp number:', error);
+      showAppDialog({ tone: 'error', message: 'Unable to switch the active WhatsApp number right now.' });
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!auth.currentUser) return;
+
+    const confirmed = await showAppConfirm({
+      tone: 'warning',
+      title: 'Disconnect WABA',
+      message: 'This will remove the connected WhatsApp Business Account from this workspace. You can reconnect it from onboarding later.',
+      confirmLabel: 'Disconnect',
+      cancelLabel: 'Keep Connected'
+    });
+
+    if (!confirmed) return;
+
+    setDisconnecting(true);
+    try {
+      await setDoc(doc(db, 'users', auth.currentUser.uid), {
+        whatsappCredentials: null,
+        whatsappCatalogConnection: null,
+        toolSetup: {
+          whatsapp: false
+        }
+      }, { merge: true });
+      whatsappService.clearCredentials();
+      showAppDialog({ tone: 'success', message: 'WhatsApp Business Account disconnected.' });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser.uid}`);
+      console.error('Failed to disconnect WhatsApp Business Account:', error);
+      showAppDialog({ tone: 'error', message: 'Unable to disconnect the WhatsApp Business Account right now.' });
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
+  const handleSaveCommerce = async () => {
+    if (!auth.currentUser || !targetPhoneId) return;
+
+    const trimmedCatalogId = catalogIdInput.trim();
+    if (!trimmedCatalogId) {
+      showAppDialog({ tone: 'warning', message: 'Enter a catalog ID before saving WhatsApp commerce settings.' });
+      return;
+    }
+
+    setSavingCommerce(true);
+    try {
+      const result = await whatsappService.updateCommerceSettings(targetPhoneId, {
+        catalogId: trimmedCatalogId,
+        isCatalogVisible: catalogVisible,
+        isCartEnabled: cartEnabled
+      });
+
+      if (!result.success) {
+        showAppDialog({ tone: 'error', message: result.error || 'Unable to connect the WhatsApp catalog right now.' });
+        return;
+      }
+
+      const nextCommerceSettings: WhatsAppCommerceSettings = {
+        connected: true,
+        catalogId: trimmedCatalogId,
+        isCatalogVisible: catalogVisible,
+        isCartEnabled: cartEnabled
+      };
+
+      setCommerceSettings(nextCommerceSettings);
+
+      await setDoc(doc(db, 'users', auth.currentUser.uid), {
+        whatsappCatalogConnection: {
+          ...nextCommerceSettings,
+          phoneNumberId: targetPhoneId,
+          updatedAt: new Date().toISOString()
+        }
+      }, { merge: true });
+
+      showAppDialog({ tone: 'success', message: 'WhatsApp catalog connected successfully.' });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser.uid}`);
+      console.error('Failed to save WhatsApp commerce settings:', error);
+      showAppDialog({ tone: 'error', message: 'Unable to connect the WhatsApp catalog right now.' });
+    } finally {
+      setSavingCommerce(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[#5B45FF]" />
+      </div>
+    );
+  }
+
+  const accountFields = [
+    { label: 'WABA ID', value: connectedWabaId || 'Not available' },
+    { label: 'WABA Name', value: accountName },
+    { label: 'Phone Number ID', value: primaryPhone?.phoneId || targetPhoneId || 'Not available' },
+    { label: 'Display Number', value: primaryPhone?.displayPhoneNumber || 'Not available' }
+  ];
+
+  const statusCards = [
+    {
+      title: 'Phone Number Status',
+      icon: <Smartphone size={18} className="text-slate-400" />,
+      value: primaryPhone?.status || 'DISCONNECTED',
+      helper: primaryPhone?.status === 'CONNECTED'
+        ? 'This number is currently connected and ready for WhatsApp messaging.'
+        : 'If this number should be active, reconnect or review it in Meta Business Manager.'
+    },
+    {
+      title: 'Message Limit',
+      icon: <Zap size={18} className="text-slate-400" />,
+      value: messageLimitLabel || 'Unknown',
+      helper: 'Business-initiated conversations allowed in a rolling 24-hour period.'
+    },
+    {
+      title: 'Display Name',
+      icon: <ShieldCheck size={18} className="text-slate-400" />,
+      value: primaryPhone?.nameStatus || 'UNKNOWN',
+      helper: primaryPhone?.verifiedName ? `Current name: ${primaryPhone.verifiedName}` : 'No verified display name returned yet.'
+    },
+    {
+      title: 'Quality Rating',
+      icon: <Activity size={18} className="text-slate-400" />,
+      value: primaryPhone?.qualityRating || primaryPhone?.qualityScore || 'UNKNOWN',
+      helper: 'Meta quality signal based on message performance and user feedback.'
+    }
+  ];
+
+  return (
+    <motion.div
+      key="channel_status"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="mx-auto w-full max-w-6xl space-y-6 md:space-y-8"
+    >
+      <div className={cn("rounded-2xl border p-6 md:rounded-3xl md:p-8", isDark ? "border-gray-800 bg-[#111827]" : "border-gray-200 bg-white shadow-sm")}>
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#5B45FF]/10">
+              <WabaIcon className="h-8 w-8" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <h3 className="text-xl font-black tracking-tight md:text-2xl">WhatsApp Channel</h3>
+                <span className={cn(
+                  "rounded-full px-3 py-1 text-[10px] font-semibold uppercase",
+                  primaryPhone?.status === 'CONNECTED'
+                    ? "bg-[#5B45FF]/10 text-[#5B45FF]"
+                    : "bg-rose-500/10 text-rose-500"
+                )}>
+                  {primaryPhone?.status || 'Disconnected'}
+                </span>
+              </div>
+              <p className={cn("mt-2 max-w-2xl text-sm leading-6", isDark ? "text-slate-400" : "text-slate-500")}>
+                Review the connected WABA, switch the active phone number, manage catalog settings, and disconnect this WhatsApp Business Account.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void handleDisconnect()}
+            disabled={disconnecting}
+            className={cn(
+              "inline-flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-sm font-bold transition-all disabled:cursor-not-allowed disabled:opacity-50",
+              isDark
+                ? "border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/15"
+                : "border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
+            )}
+          >
+            <Trash2 size={16} />
+            {disconnecting ? 'Disconnecting...' : 'Disconnect WABA'}
+          </button>
+        </div>
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className={cn("rounded-[1.4rem] border p-4", isDark ? "border-gray-700 bg-gray-900/50" : "border-slate-200 bg-slate-50")}>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-bold">Active Phone Number</p>
+                <p className="mt-1 text-xs text-slate-500">Choose which connected WhatsApp number this workspace should use.</p>
+              </div>
+              <select
+                value={targetPhoneId}
+                onChange={(event) => void handleNumberChange(event.target.value)}
+                className={cn(
+                  "min-w-[14rem] rounded-xl border px-3 py-2 text-xs font-semibold outline-none transition-all",
+                  isDark ? "border-gray-700 bg-gray-950 text-white focus:border-[#5B45FF]" : "border-slate-200 bg-white text-slate-900 focus:border-[#5B45FF]"
+                )}
+              >
+                {phoneNumbers.length === 0 && <option value="">No numbers found</option>}
+                {phoneNumbers.map((phone) => (
+                  <option key={phone.phoneId} value={phone.phoneId}>
+                    {phone.displayPhoneNumber || phone.phoneId} ({phone.verifiedName || 'Unverified'})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className={cn("rounded-[1.4rem] border p-4", isDark ? "border-gray-700 bg-gray-900/50" : "border-slate-200 bg-slate-50")}>
+            <p className="text-sm font-bold">Business Account</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {accountFields.map((field) => (
+                <div key={field.label} className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">{field.label}</p>
+                  <p className="mt-1 truncate text-sm font-semibold">{field.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {statusCards.map((card) => (
+          <div key={card.title} className={cn("rounded-2xl border p-5 md:rounded-3xl", isDark ? "border-gray-800 bg-[#111827]" : "border-gray-200 bg-white shadow-sm")}>
+            <div className="flex items-center gap-3">
+              {card.icon}
+              <p className="text-sm font-bold">{card.title}</p>
+            </div>
+            <p className="mt-4 text-2xl font-black tracking-tight">{card.value}</p>
+            <p className={cn("mt-2 text-xs leading-5", isDark ? "text-slate-400" : "text-slate-500")}>{card.helper}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <div className={cn("rounded-2xl border p-6 md:rounded-3xl md:p-8", isDark ? "border-gray-800 bg-[#111827]" : "border-gray-200 bg-white shadow-sm")}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <DatabaseIcon size={20} className="text-[#5B45FF]" />
+              <h3 className="text-lg font-bold">WhatsApp Catalog</h3>
+            </div>
+            {loadingCommerce && <RefreshCw size={16} className="animate-spin text-slate-400" />}
+          </div>
+          <p className={cn("mt-2 text-sm leading-6", isDark ? "text-slate-400" : "text-slate-500")}>
+            Link a Meta catalog so inbox agents can send product messages from this channel.
+          </p>
+
+          <div className="mt-5 grid gap-4">
+            <div className={cn("rounded-xl border p-3", isDark ? "border-gray-700 bg-gray-900/60" : "border-slate-200 bg-slate-50")}>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Catalog ID</p>
+              <input
+                type="text"
+                value={catalogIdInput}
+                onChange={(event) => setCatalogIdInput(event.target.value)}
+                placeholder="Enter Meta catalog ID"
+                className={cn("mt-2 w-full rounded-xl border px-3 py-2 text-xs outline-none", isDark ? "border-gray-700 bg-gray-950 text-white" : "border-slate-200 bg-white text-slate-900")}
+              />
+              <p className="mt-2 text-[11px] text-slate-500">
+                {catalogs.length > 0 ? `${catalogs.length} catalog${catalogs.length === 1 ? '' : 's'} found on this WABA.` : 'No catalogs were returned from this WABA yet.'}
+              </p>
+            </div>
+
+            {catalogs.length > 0 && (
+              <div className="grid gap-2">
+                {catalogs.map((catalog) => (
+                  <button
+                    key={catalog.id}
+                    type="button"
+                    onClick={() => setCatalogIdInput(catalog.id)}
+                    className={cn("rounded-xl border px-3 py-2 text-left transition-all", isDark ? "border-gray-700 bg-gray-900/60 hover:border-[#5B45FF]" : "border-slate-200 bg-slate-50 hover:border-[#5B45FF]")}
+                  >
+                    <p className="text-xs font-semibold">{catalog.name}</p>
+                    <p className="mt-1 text-[10px] text-slate-500">{catalog.id}{catalog.vertical ? ` - ${catalog.vertical}` : ''}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setCatalogVisible((prev) => !prev)}
+                className={cn(
+                  "flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium transition-all",
+                  catalogVisible
+                    ? "border-[#5B45FF]/40 bg-[#5B45FF]/10 text-[#5B45FF]"
+                    : (isDark ? "border-gray-700 bg-gray-900/60 text-slate-200" : "border-slate-200 bg-white text-slate-600")
+                )}
+              >
+                <span>Catalog Visible</span>
+                <span>{catalogVisible ? 'On' : 'Off'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCartEnabled((prev) => !prev)}
+                className={cn(
+                  "flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium transition-all",
+                  cartEnabled
+                    ? "border-[#5B45FF]/40 bg-[#5B45FF]/10 text-[#5B45FF]"
+                    : (isDark ? "border-gray-700 bg-gray-900/60 text-slate-200" : "border-slate-200 bg-white text-slate-600")
+                )}
+              >
+                <span>Cart Enabled</span>
+                <span>{cartEnabled ? 'On' : 'Off'}</span>
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => void handleSaveCommerce()}
+                disabled={savingCommerce || !targetPhoneId}
+                className="inline-flex items-center justify-center rounded-xl bg-[#5B45FF] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#4b38df] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {savingCommerce ? 'Saving...' : 'Save Catalog Connection'}
+              </button>
+              {commerceSettings?.catalogId && (
+                <span className="rounded-full bg-[#5B45FF]/10 px-3 py-1 text-[10px] font-semibold text-[#5B45FF]">
+                  Active catalog: {commerceSettings.catalogId}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className={cn("rounded-2xl border p-6 md:rounded-3xl md:p-8", isDark ? "border-gray-800 bg-[#111827]" : "border-gray-200 bg-white shadow-sm")}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Phone size={20} className="text-[#5B45FF]" />
+              <h3 className="text-lg font-bold">WhatsApp Calls API</h3>
+            </div>
+            {loadingCallingProbe && <RefreshCw size={16} className="animate-spin text-slate-400" />}
+          </div>
+          <p className={cn("mt-2 text-sm leading-6", isDark ? "text-slate-400" : "text-slate-500")}>
+            The dashboard checks live Meta calling capability for the selected phone number before exposing call controls.
+          </p>
+
+          <div className="mt-5 grid gap-4">
+            <div className={cn("rounded-xl border p-4", isDark ? "border-gray-700 bg-gray-900/60" : "border-slate-200 bg-slate-50")}>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Live Meta Status</p>
+              <div className="mt-3 flex items-center gap-2">
+                {callingProbe?.enabled ? <CheckCircle2 size={18} className="text-[#5B45FF]" /> : <AlertCircle size={18} className="text-amber-500" />}
+                <p className={cn("text-sm font-semibold", callingProbe?.enabled ? "text-[#5B45FF]" : "text-amber-500")}>
+                  {callingProbe?.enabled ? 'Ready for permission checks' : (callingProbe?.permissionStatus || 'Unavailable')}
+                </p>
+              </div>
+              <p className="mt-3 text-xs leading-5 text-slate-500">
+                {getCallPermissionMessage(callingProbe)}
+              </p>
+            </div>
+
+            <div className={cn("rounded-xl border p-4", isDark ? "border-gray-700 bg-gray-900/60" : "border-slate-200 bg-slate-50")}>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Display Name Guidance</p>
+              <ul className="mt-3 space-y-2 text-xs leading-5 text-slate-500">
+                <li>Use the same display name as the brand shown on your website.</li>
+                <li>Keep the website live and operational before submitting changes.</li>
+                <li>Add the legal company name in the website footer when possible.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 function ProfileSection({ isDark }: { isDark: boolean }) {
   const [businessAccounts, setBusinessAccounts] = useState<any[]>([]);
   const [phoneNumbers, setPhoneNumbers] = useState<WhatsAppPhoneNumber[]>([]);
@@ -9739,14 +10256,14 @@ function NavItem({ icon, label, active, onClick, isDark, collapsed = false }: { 
         collapsed && "md:justify-center",
         active 
           ? "border-[#5B45FF] bg-[#5B45FF] text-white shadow-[0_12px_30px_rgba(91,69,255,0.18)]"
-          : (isDark ? "border-transparent text-gray-400 hover:border-[#5B45FF]0/10 hover:bg-[#5B45FF]0/8 hover:text-white" : "border-transparent text-slate-600 hover:border-[#5B45FF] hover:bg-[#5B45FF]/80 hover:text-[#5B45FF]")
+          : (isDark ? "border-transparent text-gray-400 hover:border-[#5B45FF]/10 hover:bg-[#5B45FF]/8 hover:text-white" : "border-transparent text-slate-600 hover:border-[#5B45FF]/20 hover:bg-[#5B45FF]/8 hover:text-slate-900")
       )}
     >
       <span className={cn(
         "flex h-10 w-10 items-center justify-center rounded-2xl transition-all",
         active
           ? "bg-white/15 text-white"
-          : (isDark ? "bg-[#5B45FF]0/8 text-[#5B45FF] group-hover:text-white" : "bg-[#5B45FF] text-[#5B45FF] group-hover:bg-white")
+          : (isDark ? "bg-[#5B45FF]/10 text-[#5B45FF] group-hover:bg-[#5B45FF] group-hover:text-white" : "bg-[#5B45FF]/10 text-[#5B45FF] group-hover:bg-[#5B45FF] group-hover:text-white")
       )}>
         {icon}
       </span>
