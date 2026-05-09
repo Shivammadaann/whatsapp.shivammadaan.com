@@ -90,7 +90,7 @@ const serviceCatalog = [
     price: 'INR 1',
     accent: 'bg-white text-[#5B45FF] border-[#5B45FF]/20',
     surface: 'bg-white',
-    ribbon: 'bg-[#5B45FF] text-[#5B45FF]',
+    ribbon: 'bg-[#5B45FF] text-white',
     visuals: [
       { label: 'WhatsApp', icon: WhatsAppIcon }
     ]
@@ -682,9 +682,9 @@ export default function ProductDashboard() {
             <div className="space-y-3">
               <Logo variant="compact" showText={!isSidebarCollapsed} />
               {!isSidebarCollapsed && (
-                <div className="rounded-2xl border border-[#5B45FF] bg-[#5B45FF] px-3 py-2">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#5B45FF]">Workspace</p>
-                  <p className="mt-1 text-sm font-bold text-slate-900">WhatsApp Business Hub</p>
+                <div className="rounded-2xl border border-[#5B45FF] bg-[#5B45FF] px-3 py-2 text-white">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/75">Workspace</p>
+                  <p className="mt-1 text-sm font-bold text-white">WhatsApp Business Hub</p>
                 </div>
               )}
             </div>
@@ -739,15 +739,15 @@ export default function ProductDashboard() {
 
         <div className="border-t border-slate-200/80 p-4">
           <div className={cn(
-            "mb-3 flex items-center gap-3 rounded-[1.4rem] border border-[#5B45FF] bg-[#5B45FF]/80 px-3 py-3",
+            "mb-3 flex items-center gap-3 rounded-[1.4rem] border border-[#5B45FF] bg-[#5B45FF]/80 px-3 py-3 text-white",
             isSidebarCollapsed && "lg:justify-center lg:px-2"
           )}>
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#5B45FF]/10 text-sm font-black text-[#5B45FF]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 text-sm font-black text-white">
               {hubAccountName[0] || 'U'}
             </div>
             <div className={cn("min-w-0", isSidebarCollapsed && "lg:hidden")}>
               <p className="truncate text-sm font-bold">{hubAccountName}</p>
-              <p className="truncate text-xs text-slate-500">{hubAccountEmail}</p>
+              <p className="truncate text-xs text-white/75">{hubAccountEmail}</p>
             </div>
           </div>
           <button
@@ -843,7 +843,7 @@ export default function ProductDashboard() {
               className={cn(
                 "mb-5 rounded-[1.4rem] border px-4 py-3 text-sm font-semibold shadow-sm",
                 hubNotice.tone === 'success'
-                  ? "border-[#5B45FF] bg-[#5B45FF] text-[#5B45FF]"
+                  ? "border-[#5B45FF] bg-[#5B45FF] text-white"
                   : "border-rose-200 bg-rose-50 text-rose-700"
               )}
             >
@@ -904,7 +904,7 @@ export default function ProductDashboard() {
                       <Shield size={16} className="text-[#5B45FF]" />
                       All in One Business Suite
                     </div>
-                    <div className="inline-flex items-center gap-2 rounded-2xl border border-[#5B45FF] bg-[#5B45FF] px-5 py-3 text-[13px] font-medium text-[#5B45FF]">
+                    <div className="inline-flex items-center gap-2 rounded-2xl border border-[#5B45FF] bg-[#5B45FF] px-5 py-3 text-[13px] font-medium text-white">
                       <Sparkles size={16} className="text-[#5B45FF]" />
                       7 Days Free Trial
                     </div>
@@ -956,7 +956,7 @@ export default function ProductDashboard() {
                       </div>
                       <span className={cn(
                         "rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.2em]",
-                        isUnlocked ? "bg-[#5B45FF] text-[#5B45FF]" : service.ribbon
+                        isUnlocked ? "bg-[#5B45FF] text-white" : service.ribbon
                       )}>
                         {isUnlocked ? 'Unlocked' : 'Locked'}
                       </span>
@@ -1054,7 +1054,7 @@ export default function ProductDashboard() {
                           <span className={cn(
                             "rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.2em]",
                             toolStatusMap[service.id] === 'Connected'
-                              ? "bg-[#5B45FF] text-[#5B45FF]"
+                              ? "bg-[#5B45FF] text-white"
                               : toolStatusMap[service.id] === 'Disconnected'
                                 ? "bg-rose-100 text-rose-700"
                                 : "bg-amber-100 text-amber-700"
@@ -1147,7 +1147,7 @@ export default function ProductDashboard() {
                         Invite teammates, choose their role, decide which WhatsApp Business apps they should use, and send a real email invitation instantly.
                       </p>
                     </div>
-                    <div className="rounded-2xl border border-[#5B45FF] bg-[#5B45FF] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#5B45FF]">
+                    <div className="rounded-2xl border border-[#5B45FF] bg-[#5B45FF] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-white">
                       {isWorkspaceAdmin ? 'Admin controls' : 'Read only'}
                     </div>
                   </div>
@@ -1211,7 +1211,7 @@ export default function ProductDashboard() {
                               className={cn(
                                 "flex items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm transition-all",
                                 selected
-                                  ? "border-[#5B45FF] bg-[#5B45FF] text-[#5B45FF]"
+                                  ? "border-[#5B45FF] bg-[#5B45FF] text-white"
                                   : "border-slate-200 bg-white text-slate-600",
                                 !app.unlocked && "cursor-not-allowed opacity-50"
                               )}
@@ -1272,7 +1272,7 @@ export default function ProductDashboard() {
                             <div className="mt-3 flex flex-wrap gap-2">
                               <span className={cn(
                                 "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em]",
-                                member.status === 'active' ? "bg-[#5B45FF] text-[#5B45FF]" : "bg-amber-100 text-amber-700"
+                                member.status === 'active' ? "bg-[#5B45FF] text-white" : "bg-amber-100 text-amber-700"
                               )}>
                                 {member.status === 'active' ? 'Active' : 'Invited'}
                               </span>
@@ -1324,7 +1324,7 @@ export default function ProductDashboard() {
                                 className={cn(
                                   "rounded-2xl border px-3 py-3 text-left text-sm transition-all",
                                   assigned
-                                    ? "border-[#5B45FF] bg-[#5B45FF] text-[#5B45FF]"
+                                    ? "border-[#5B45FF] bg-[#5B45FF] text-white"
                                     : "border-white bg-white text-slate-500",
                                   !app.unlocked && "cursor-not-allowed opacity-50"
                                 )}
@@ -1440,14 +1440,14 @@ export default function ProductDashboard() {
                       className={cn(
                         "rounded-[1.4rem] border p-5 text-left transition-all",
                         notificationForm[item.key as keyof HubNotificationSettings]
-                          ? "border-[#5B45FF] bg-[#5B45FF]"
+                          ? "border-[#5B45FF] bg-[#5B45FF] text-white"
                           : "border-slate-200 bg-slate-50/80"
                       )}
                     >
-                      <p className="text-sm font-bold text-slate-950">{item.label}</p>
-                      <p className="mt-2 text-[13px] leading-6 text-slate-500">{item.copy}</p>
+                      <p className={cn("text-sm font-bold", notificationForm[item.key as keyof HubNotificationSettings] ? "text-white" : "text-slate-950")}>{item.label}</p>
+                      <p className={cn("mt-2 text-[13px] leading-6", notificationForm[item.key as keyof HubNotificationSettings] ? "text-white/75" : "text-slate-500")}>{item.copy}</p>
                       <div className="mt-4 flex items-center justify-between">
-                        <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Status</span>
+                        <span className={cn("text-[11px] font-bold uppercase tracking-[0.18em]", notificationForm[item.key as keyof HubNotificationSettings] ? "text-white/70" : "text-slate-400")}>Status</span>
                         <span className={cn(
                           "rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em]",
                           notificationForm[item.key as keyof HubNotificationSettings]
@@ -1524,13 +1524,13 @@ function NavItem({ icon, label, active = false, onClick, badge, collapsed = fals
         collapsed && "lg:justify-center",
         active
           ? "border-[#5B45FF] bg-[#5B45FF] text-white shadow-[0_12px_30px_rgba(91,69,255,0.18)]"
-          : "border-transparent text-slate-600 hover:border-[#5B45FF] hover:bg-[#5B45FF]/80 hover:text-[#5B45FF]"
+          : "border-transparent text-slate-600 hover:border-[#5B45FF] hover:bg-[#5B45FF]/80 hover:text-white"
       )}
     >
       <span className="flex items-center gap-3">
         <span className={cn(
           "flex h-10 w-10 items-center justify-center rounded-2xl transition-all",
-          active ? "bg-white/15 text-white" : "bg-[#5B45FF] text-[#5B45FF] group-hover:bg-white"
+          active ? "bg-white/15 text-white" : "bg-[#5B45FF] text-white group-hover:bg-white"
         )}>
           {icon}
         </span>
@@ -1539,7 +1539,7 @@ function NavItem({ icon, label, active = false, onClick, badge, collapsed = fals
       {badge && !collapsed && (
         <span className={cn(
           "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em]",
-          active ? "bg-white/15 text-white" : "bg-[#5B45FF] text-[#5B45FF]"
+          active ? "bg-white/15 text-white" : "bg-[#5B45FF] text-white"
         )}>
           {badge}
         </span>

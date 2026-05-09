@@ -26,8 +26,18 @@ export default function App() {
     window.sessionStorage.getItem('WhatsApp Business_onboarding_pending') === 'true';
 
   const renderLoadingScreen = () => (
-    <div className="min-h-screen bg-white flex items-center justify-center text-slate-900 font-bold">
-      Finalizing your workspace...
+    <div className="app-mesh-light app-safe-screen flex items-center justify-center px-6 text-slate-900">
+      <div className="flex flex-col items-center gap-5 rounded-2xl border border-slate-200/80 bg-white/90 px-8 py-7 text-center shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+        <Logo size={54} showText={false} />
+        <div>
+          <p className="text-sm font-extrabold tracking-tight text-slate-950">Finalizing your workspace</p>
+          <div className="mt-4 flex justify-center gap-1.5">
+            <span className="h-2 w-2 animate-bounce rounded-full bg-[#5B45FF]" style={{ animationDelay: '0ms' }} />
+            <span className="h-2 w-2 animate-bounce rounded-full bg-[#5B45FF]" style={{ animationDelay: '150ms' }} />
+            <span className="h-2 w-2 animate-bounce rounded-full bg-[#5B45FF]" style={{ animationDelay: '300ms' }} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 

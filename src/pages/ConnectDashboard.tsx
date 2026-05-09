@@ -23,16 +23,13 @@ import {
   AlertCircle,
   Search,
   Plus,
-  Inbox,
   Zap,
   Link as LinkIcon,
-  UserCircle,
   FileUp,
   Filter,
   MoreHorizontal,
   Paperclip,
   Smile,
-  Type,
   ChevronRight,
   ChevronDown,
   Star,
@@ -59,13 +56,24 @@ import {
   BellRing,
   Volume2,
   VolumeX,
-  UserPlus
+  UserPlus,
+  MessageSquareText,
+  PhoneCall,
+  Megaphone,
+  LayoutTemplate,
+  ContactRound,
+  Workflow,
+  Building2,
+  RadioTower,
+  Settings2,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { whatsappService } from '../services/whatsappService';
-import { auth, db } from '../firebase';
+import { auth, db, storage } from '../firebase';
 import { updateProfile } from 'firebase/auth';
 import { collection, doc, onSnapshot, query, where, orderBy, addDoc, getDoc, getDocs, limit, deleteDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
 import {
   WhatsAppTemplate,
   BroadcastSession,
@@ -519,9 +527,11 @@ const syncMessagesWithSnapshot = (existingMessages: any[], snapshotMessages: any
 const getContactKey = (contact: any) => contact?.id || contact?.whatsappNumber || contact?.phone;
 
 const getContactPhone = (contact: any) => contact?.whatsappNumber || contact?.phone || '';
-const getConversationAvatarUrl = (contact: any) => contact?.avatarUrl || defaultConversationProfile;
+const getContactAvatarUrl = (contact: any) => contact?.avatarUrl || contact?.photo || contact?.profilePicture || '';
+const getConversationAvatarUrl = (contact: any) => getContactAvatarUrl(contact) || defaultConversationProfile;
 const normalizePhoneDigits = (value: string) => value.replace(/\D/g, '');
 const createCrmLeadId = () => `crm-inbox-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const MAX_CONTACT_AVATAR_BYTES = 5 * 1024 * 1024;
 
 const getCallLabel = (direction: CallDirection, status: CallStatus) => {
   if (status === 'missed') return direction === 'incoming' ? 'Missed voice call' : 'Missed outgoing call';
@@ -2390,7 +2400,6 @@ export default function ConnectDashboard() {
   const connectedNumberLabel = accountInfo?.displayPhoneNumber || phoneNumbers[0]?.displayPhoneNumber || 'Connecting...';
   const connectedNumberHealth = accountInfo?.qualityRating || accountInfo?.status || phoneNumbers[0]?.qualityRating || phoneNumbers[0]?.status || 'Unknown';
   const accountAvatar = currentUserProfile?.profilePicture || auth.currentUser?.photoURL || '';
-  const workspaceLabel = currentUserProfile?.companyName || currentUserProfile?.displayName || 'WhatsApp Business Workspace';
   const notificationSettings: NotificationSettings = {
     toastEnabled: currentUserProfile?.notificationSettings?.toastEnabled ?? true,
     soundEnabled: currentUserProfile?.notificationSettings?.soundEnabled ?? true,
@@ -2463,7 +2472,7 @@ export default function ConnectDashboard() {
   if (!isProfileLoaded) {
     return (
       <div className={cn("min-h-screen flex items-center justify-center", isDark ? "bg-[#0a0f1e] text-white" : "bg-gray-50 text-gray-900")}>
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5B45FF]0"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5B45FF]"></div>
       </div>
     );
   }
@@ -2484,12 +2493,12 @@ export default function ConnectDashboard() {
                   transition={{ type: 'spring', stiffness: 320, damping: 28 }}
                   className={cn(
                     "pointer-events-auto overflow-hidden rounded-[1.4rem] border p-4 shadow-[0_24px_60px_rgba(15,23,42,0.22)] backdrop-blur-xl",
-                    isDark ? "border-[#5B45FF]0/20 bg-[#0f172a]/95 text-white" : "border-white/70 bg-white/95 text-slate-900"
+                    isDark ? "border-[#5B45FF]/20 bg-[#0f172a]/95 text-white" : "border-white/70 bg-white/95 text-slate-900"
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#5B45FF]0">New Message</p>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#5B45FF]">New Message</p>
                       <h4 className="mt-1 truncate text-sm font-bold">{toast.title}</h4>
                       <p className={cn("mt-1 text-xs leading-5", isDark ? "text-slate-300" : "text-slate-600")}>{toast.body}</p>
                     </div>
@@ -2527,12 +2536,12 @@ export default function ConnectDashboard() {
                 transition={{ type: 'spring', stiffness: 320, damping: 28 }}
                 className={cn(
                   "pointer-events-auto overflow-hidden rounded-[1.4rem] border p-4 shadow-[0_24px_60px_rgba(15,23,42,0.22)] backdrop-blur-xl",
-                  isDark ? "border-[#5B45FF]0/20 bg-[#0f172a]/95 text-white" : "border-white/70 bg-white/95 text-slate-900"
+                  isDark ? "border-[#5B45FF]/20 bg-[#0f172a]/95 text-white" : "border-white/70 bg-white/95 text-slate-900"
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#5B45FF]0">New Message</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#5B45FF]">New Message</p>
                     <h4 className="mt-1 truncate text-sm font-bold">{toast.title}</h4>
                     <p className={cn("mt-1 text-xs leading-5", isDark ? "text-slate-300" : "text-slate-600")}>{toast.body}</p>
                   </div>
@@ -2564,7 +2573,7 @@ export default function ConnectDashboard() {
           >
             <div className={cn(
               "pointer-events-auto w-full overflow-hidden rounded-[1.75rem] border shadow-[0_30px_80px_rgba(15,23,42,0.28)] backdrop-blur-xl sm:max-w-md",
-              isDark ? "border-[#5B45FF]0/20 bg-[#0f172a]/95 text-white" : "border-white/70 bg-white/95 text-slate-900"
+              isDark ? "border-[#5B45FF]/20 bg-[#0f172a]/95 text-white" : "border-white/70 bg-white/95 text-slate-900"
             )}>
               <div className={cn(
                 "px-5 py-4",
@@ -2574,14 +2583,14 @@ export default function ConnectDashboard() {
               )}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#5B45FF]0">{activeCallStatusLabel}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#5B45FF]">{activeCallStatusLabel}</p>
                     <h3 className="mt-2 truncate text-lg font-black tracking-tight">{activeCallSession.contactName}</h3>
                     <p className={cn("mt-1 text-sm", isDark ? "text-slate-300" : "text-slate-600")}>{activeCallSession.contactPhone}</p>
                   </div>
                   <div className={cn(
                     "rounded-full px-3 py-1 text-[11px] font-semibold",
                     activeCallSession.status === 'ringing'
-                      ? "bg-[#5B45FF]0/10 text-[#5B45FF]0"
+                      ? "bg-[#5B45FF]/10 text-[#5B45FF]"
                       : activeCallSession.status === 'ongoing'
                         ? (isDark ? "bg-white/10 text-slate-200" : "bg-slate-100 text-slate-700")
                         : "bg-slate-500/10 text-slate-500"
@@ -2614,7 +2623,7 @@ export default function ConnectDashboard() {
                         className={cn(
                           "inline-flex flex-col items-center justify-center gap-2 rounded-[1.2rem] border px-3 py-3 text-sm font-semibold transition-all",
                           activeCallSession.speakerOn
-                            ? "border-[#5B45FF]0/40 bg-[#5B45FF]0/10 text-[#5B45FF]0"
+                            ? "border-[#5B45FF]/40 bg-[#5B45FF]/10 text-[#5B45FF]"
                             : (isDark ? "border-white/8 bg-white/5 text-slate-200 hover:bg-white/10" : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-white")
                         )}
                       >
@@ -2676,7 +2685,7 @@ export default function ConnectDashboard() {
                     <button
                       type="button"
                       onClick={() => void answerIncomingCall()}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#5B45FF]0 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]0/20 transition-all hover:bg-[#5B45FF]"
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#5B45FF] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]/20 transition-all hover:bg-[#5B45FF]"
                     >
                       <Phone size={16} />
                       Answer
@@ -2728,7 +2737,7 @@ export default function ConnectDashboard() {
       {/* Sidebar */}
       <aside className={cn(
         "fixed left-0 top-0 h-full w-[var(--app-sidebar-width)] md:[width:var(--connect-sidebar-width)] border-r transition-all duration-300 z-[70] flex flex-col transform md:translate-x-0 backdrop-blur-xl",
-        isDark ? "bg-slate-950/84 border-[#5B45FF]0/12 shadow-[0_18px_55px_rgba(2,8,23,0.42)]" : "bg-[linear-gradient(180deg,#F1EFFF_0%,#ffffff_22%)] border-[#5B45FF] shadow-[0_24px_60px_rgba(15,23,42,0.08)]",
+        isDark ? "bg-slate-950/88 border-white/8 shadow-[0_18px_55px_rgba(2,8,23,0.42)]" : "bg-white/88 border-slate-200/80 shadow-[0_24px_60px_rgba(15,23,42,0.06)]",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className={cn("p-4 flex items-start justify-between gap-3", isSidebarCollapsed && "md:flex-col md:items-center")}>
@@ -2736,20 +2745,9 @@ export default function ConnectDashboard() {
             <div className={cn("flex items-center gap-3", isSidebarCollapsed && "md:justify-center")}>
               <Logo size={44} showText={false} className="shrink-0" />
               <div className={cn("min-w-0", isSidebarCollapsed && "md:hidden")}>
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#5B45FF]0">Cloud inbox</p>
-                <h1 className="truncate text-xl font-black tracking-tight">WhatsApp Business Inbox</h1>
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#5B45FF]">Cloud inbox</p>
+                <h1 className="truncate text-lg font-extrabold tracking-tight">WhatsApp Business Inbox</h1>
               </div>
-            </div>
-            <div className={cn(
-              "mt-4 rounded-[1.4rem] border p-4",
-              isSidebarCollapsed && "hidden",
-              isDark ? "border-[#5B45FF]0/15 bg-[#5B45FF]0/10" : "border-[#5B45FF] bg-[#5B45FF]/80"
-            )}>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#5B45FF]0">Workspace</p>
-              <p className="mt-2 truncate text-sm font-bold">{workspaceLabel}</p>
-              <p className={cn("mt-1 text-xs", isDark ? "text-slate-300" : "text-slate-600")}>
-                {connectedNumberLabel} · {connectedNumberHealth}
-              </p>
             </div>
           </div>
           <div className={cn("flex items-center gap-2", isSidebarCollapsed && "md:w-full md:justify-center")}>
@@ -2770,9 +2768,9 @@ export default function ConnectDashboard() {
           </div>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1 overflow-y-auto py-2 no-scrollbar">
+        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 no-scrollbar">
           <NavItem 
-            icon={<Inbox size={20} />} 
+            icon={<MessageSquareText size={20} strokeWidth={2.2} />} 
             label="Team Inbox" 
             active={activeTab === 'inbox'} 
             onClick={() => { setActiveTab('inbox'); setIsSidebarOpen(false); }}
@@ -2780,7 +2778,7 @@ export default function ConnectDashboard() {
             collapsed={isSidebarCollapsed}
           />
           <NavItem 
-            icon={<WhatsAppCallsIcon size={20} />} 
+            icon={<PhoneCall size={20} strokeWidth={2.2} />} 
             label="WhatsApp Calls" 
             active={activeTab === 'calls'} 
             onClick={() => { setActiveTab('calls'); setIsSidebarOpen(false); }}
@@ -2788,7 +2786,7 @@ export default function ConnectDashboard() {
             collapsed={isSidebarCollapsed}
           />
           <NavItem 
-            icon={<Send size={20} />} 
+            icon={<Megaphone size={20} strokeWidth={2.2} />} 
             label="Broadcast" 
             active={activeTab === 'broadcast'} 
             onClick={() => { setActiveTab('broadcast'); setIsSidebarOpen(false); }}
@@ -2796,7 +2794,7 @@ export default function ConnectDashboard() {
             collapsed={isSidebarCollapsed}
           />
           <NavItem 
-            icon={<Type size={20} />} 
+            icon={<LayoutTemplate size={20} strokeWidth={2.2} />} 
             label="Templates" 
             active={activeTab === 'templates'} 
             onClick={() => { setActiveTab('templates'); setIsSidebarOpen(false); }}
@@ -2804,7 +2802,7 @@ export default function ConnectDashboard() {
             collapsed={isSidebarCollapsed}
           />
           <NavItem 
-            icon={<Users size={20} />} 
+            icon={<ContactRound size={20} strokeWidth={2.2} />} 
             label="Contacts" 
             active={activeTab === 'contacts'} 
             onClick={() => { setActiveTab('contacts'); setIsSidebarOpen(false); }}
@@ -2813,7 +2811,7 @@ export default function ConnectDashboard() {
           />
 
           <NavItem 
-            icon={<Zap size={20} />} 
+            icon={<Workflow size={20} strokeWidth={2.2} />} 
             label="Automations" 
             active={activeTab === 'automations'} 
             onClick={() => { setActiveTab('automations'); setIsSidebarOpen(false); }}
@@ -2821,7 +2819,7 @@ export default function ConnectDashboard() {
             collapsed={isSidebarCollapsed}
           />
           <NavItem 
-            icon={<UserCircle size={20} />} 
+            icon={<Building2 size={20} strokeWidth={2.2} />} 
             label="Business Profile" 
             active={activeTab === 'profile'} 
             onClick={() => { setActiveTab('profile'); setIsSidebarOpen(false); }}
@@ -2829,7 +2827,7 @@ export default function ConnectDashboard() {
             collapsed={isSidebarCollapsed}
           />
           <NavItem 
-            icon={<Activity size={20} />} 
+            icon={<RadioTower size={20} strokeWidth={2.2} />} 
             label="Channels" 
             active={activeTab === 'channel_status'} 
             onClick={() => { setActiveTab('channel_status'); setIsSidebarOpen(false); }}
@@ -2837,7 +2835,7 @@ export default function ConnectDashboard() {
             collapsed={isSidebarCollapsed}
           />
           <NavItem 
-            icon={<Settings size={20} />} 
+            icon={<Settings2 size={20} strokeWidth={2.2} />} 
             label="Settings" 
             active={activeTab === 'settings'} 
             onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }}
@@ -2849,9 +2847,9 @@ export default function ConnectDashboard() {
         {/* Logout Button */}
         <div className={cn("p-4 border-t", isDark ? "border-white/8" : "border-slate-200/80")}>
           <div className={cn(
-            "mb-3 flex items-center gap-3 rounded-[1.4rem] border px-3 py-3",
+            "mb-3 flex items-center gap-3 rounded-2xl border px-3 py-3",
             isSidebarCollapsed && "md:justify-center md:px-2",
-            isDark ? "border-[#5B45FF]0/12 bg-[#5B45FF]0/10" : "border-[#5B45FF] bg-[#5B45FF]/80"
+            isDark ? "border-white/8 bg-white/5" : "border-slate-200 bg-slate-50/80"
           )}>
             {accountAvatar ? (
               <img src={accountAvatar} alt="Account" className="h-10 w-10 rounded-2xl object-cover border border-white/20" />
@@ -2881,7 +2879,7 @@ export default function ConnectDashboard() {
 
       {/* Main Content */}
       <main className="desktop-main-offset flex-1 app-safe-screen flex flex-col relative z-10">
-        <header className="sticky top-0 z-40 px-4 py-3 transition-colors duration-300 md:px-6 xl:px-8">
+        <header className="sticky top-0 z-40 px-4 py-4 transition-colors duration-300 md:px-6 xl:px-8">
           <div className="app-header-card app-header-compact flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <button 
@@ -2906,7 +2904,7 @@ export default function ConnectDashboard() {
                       key={`${item.label}-${item.value}`}
                       className="app-header-chip hidden rounded-full px-2.5 py-1 text-[10px] font-semibold md:inline-flex"
                     >
-                      <span className="mr-1.5 text-white/70">{item.label}:</span>
+                      <span className="mr-1.5 opacity-60">{item.label}:</span>
                       {item.value}
                     </div>
                   ))}
@@ -2915,7 +2913,7 @@ export default function ConnectDashboard() {
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2 md:gap-3">
               <div className="app-header-chip flex shrink-0 items-center gap-2 rounded-2xl px-3 py-2 text-[10px] font-medium md:text-xs">
-                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-[#5B45FF]0 rounded-full animate-pulse" />
+                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-[#5B45FF] rounded-full animate-pulse" />
                 <span className="max-w-[8rem] truncate font-mono text-[9px] md:max-w-[11rem] md:text-xs">{connectedNumberLabel}</span>
                 <span className="opacity-50">|</span>
                 <span className="font-bold">{connectedNumberHealth}</span>
@@ -2938,7 +2936,7 @@ export default function ConnectDashboard() {
               ) : (
                 <div className={cn(
                   "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl font-bold text-xs md:h-11 md:w-11 md:text-base",
-                  "bg-white/16 text-white"
+                  "bg-[#5B45FF]/10 text-[#5B45FF]"
                 )}>
                   {(currentUserProfile?.displayName || auth.currentUser?.displayName || '?')[0]}
                 </div>
@@ -3224,7 +3222,7 @@ function AppDialogHost({ isDark }: { isDark: boolean }) {
 
   const toneClasses = {
     info: isDark ? 'bg-sky-500/15 text-sky-300 border-sky-500/30' : 'bg-sky-50 text-sky-700 border-sky-200',
-    success: isDark ? 'bg-[#5B45FF]0/15 text-[#5B45FF] border-[#5B45FF]0/30' : 'bg-[#5B45FF] text-[#5B45FF] border-[#5B45FF]',
+    success: isDark ? 'bg-[#5B45FF]/15 text-[#5B45FF] border-[#5B45FF]/30' : 'bg-[#5B45FF] text-white border-[#5B45FF]',
     warning: isDark ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200',
     error: isDark ? 'bg-rose-500/15 text-rose-300 border-rose-500/30' : 'bg-rose-50 text-rose-700 border-rose-200'
   };
@@ -3308,7 +3306,7 @@ function AppDialogHost({ isDark }: { isDark: boolean }) {
                   'rounded-xl px-4 py-2 text-sm font-semibold text-white',
                   dialog.tone === 'error' ? 'bg-rose-500 hover:bg-rose-600' :
                   dialog.tone === 'warning' ? 'bg-amber-500 hover:bg-amber-600' :
-                  dialog.tone === 'success' ? 'bg-[#5B45FF]0 hover:bg-[#5B45FF]' :
+                  dialog.tone === 'success' ? 'bg-[#5B45FF] hover:bg-[#5B45FF]' :
                   'bg-sky-500 hover:bg-sky-600'
                 )}
               >
@@ -3562,7 +3560,7 @@ function OnboardingSection({ isDark, handleLogout }: { isDark: boolean, handleLo
     <div className={cn("min-h-screen flex flex-col", isDark ? "bg-[#0a0f1e] text-white" : "bg-gray-50 text-gray-900")}>
       <header className="app-header-card mx-4 mt-4 flex min-h-[4.5rem] items-center justify-between gap-3 px-5 py-3 md:mx-6 md:px-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/16 rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-[#5B45FF]/10 text-[#5B45FF] flex items-center justify-center">
             <WabaIcon className="h-6 w-6" />
           </div>
           <h1 className="app-header-title font-bold tracking-tight">Connect WhatsApp Business Account.</h1>
@@ -3583,7 +3581,7 @@ function OnboardingSection({ isDark, handleLogout }: { isDark: boolean, handleLo
         <div className={cn("w-full max-w-2xl rounded-3xl p-8 md:p-12 border shadow-xl", isDark ? "bg-[#111827] border-gray-800" : "bg-white border-gray-200")}>
           {tab === 'options' ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 text-center">
-              <div className="w-20 h-20 bg-[#5B45FF]0/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="w-20 h-20 bg-[#5B45FF]/10 rounded-full flex items-center justify-center mx-auto mb-6">
                 <WabaIcon className="h-10 w-10" />
               </div>
               <h2 className="text-3xl font-bold">Connect your WhatsApp Business Account</h2>
@@ -3649,7 +3647,7 @@ function OnboardingSection({ isDark, handleLogout }: { isDark: boolean, handleLo
                     type="password" 
                     required 
                     placeholder="EAAG..." 
-                    className={cn("w-full p-4 rounded-xl outline-none border focus:border-[#5B45FF]0 transition-all font-mono text-sm", isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200")} 
+                    className={cn("w-full p-4 rounded-xl outline-none border focus:border-[#5B45FF] transition-all font-mono text-sm", isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200")} 
                   />
                 </div>
                 <div className="space-y-2">
@@ -3659,7 +3657,7 @@ function OnboardingSection({ isDark, handleLogout }: { isDark: boolean, handleLo
                     type="text" 
                     required 
                     placeholder="101234567890123" 
-                    className={cn("w-full p-4 rounded-xl outline-none border focus:border-[#5B45FF]0 transition-all font-mono text-sm", isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200")} 
+                    className={cn("w-full p-4 rounded-xl outline-none border focus:border-[#5B45FF] transition-all font-mono text-sm", isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200")} 
                   />
                 </div>
                 <div className="space-y-2">
@@ -3669,14 +3667,14 @@ function OnboardingSection({ isDark, handleLogout }: { isDark: boolean, handleLo
                     type="text" 
                     required 
                     placeholder="101234567890123" 
-                    className={cn("w-full p-4 rounded-xl outline-none border focus:border-[#5B45FF]0 transition-all font-mono text-sm", isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200")} 
+                    className={cn("w-full p-4 rounded-xl outline-none border focus:border-[#5B45FF] transition-all font-mono text-sm", isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200")} 
                   />
                 </div>
 
                 <button 
                   type="submit" 
                   disabled={saving}
-                  className="w-full bg-[#5B45FF]0 hover:bg-[#5B45FF] text-white font-bold py-4 rounded-xl shadow-lg shadow-[#5B45FF]0/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full bg-[#5B45FF] hover:bg-[#5B45FF] text-white font-bold py-4 rounded-xl shadow-lg shadow-[#5B45FF]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {saving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <Save size={20} />}
                   {saving ? 'Connecting...' : 'Connect Account'}
@@ -3768,7 +3766,7 @@ function OverviewSection({ isDark, templates, broadcasts, stats, channels, accou
       label: 'Delivery',
       value: deliveryRate,
       helper: `${Number(overviewStats.delivered || 0).toLocaleString()} delivered`,
-      tone: 'text-[#5B45FF]0'
+      tone: 'text-[#5B45FF]'
     },
     {
       label: 'Read',
@@ -3805,7 +3803,7 @@ function OverviewSection({ isDark, templates, broadcasts, stats, channels, accou
         <div className={cn("overflow-hidden rounded-[1.6rem] border p-4 md:p-5", isDark ? "border-gray-800 bg-slate-900 shadow-[0_24px_70px_rgba(2,8,23,0.28)]" : "border-slate-200 bg-white shadow-[0_20px_55px_rgba(15,23,42,0.08)]")}>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <div className={cn("inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em]", isDark ? "border-[#5B45FF]0/20 bg-[#5B45FF]0/10 text-[#5B45FF]" : "border-[#5B45FF] bg-[#5B45FF] text-[#5B45FF]")}>
+              <div className={cn("inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em]", isDark ? "border-[#5B45FF]/20 bg-[#5B45FF]/10 text-[#5B45FF]" : "border-[#5B45FF] bg-[#5B45FF] text-white")}>
                 Performance Snapshot
               </div>
               <h3 className="mt-2 text-lg font-black tracking-tight md:text-xl">Overview</h3>
@@ -3817,7 +3815,7 @@ function OverviewSection({ isDark, templates, broadcasts, stats, channels, accou
                   type="date"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
-                  className={cn("w-full rounded-xl border px-3 py-2 text-xs outline-none transition-colors", isDark ? "border-gray-700 bg-gray-900 text-white focus:border-[#5B45FF]0" : "border-slate-200 bg-slate-50 text-slate-900 focus:border-[#5B45FF]")}
+                  className={cn("w-full rounded-xl border px-3 py-2 text-xs outline-none transition-colors", isDark ? "border-gray-700 bg-gray-900 text-white focus:border-[#5B45FF]" : "border-slate-200 bg-slate-50 text-slate-900 focus:border-[#5B45FF]")}
                 />
               </label>
               <label className="space-y-1.5">
@@ -3826,7 +3824,7 @@ function OverviewSection({ isDark, templates, broadcasts, stats, channels, accou
                   type="date"
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
-                  className={cn("w-full rounded-xl border px-3 py-2 text-xs outline-none transition-colors", isDark ? "border-gray-700 bg-gray-900 text-white focus:border-[#5B45FF]0" : "border-slate-200 bg-slate-50 text-slate-900 focus:border-[#5B45FF]")}
+                  className={cn("w-full rounded-xl border px-3 py-2 text-xs outline-none transition-colors", isDark ? "border-gray-700 bg-gray-900 text-white focus:border-[#5B45FF]" : "border-slate-200 bg-slate-50 text-slate-900 focus:border-[#5B45FF]")}
                 />
               </label>
             </div>
@@ -3861,7 +3859,7 @@ function OverviewSection({ isDark, templates, broadcasts, stats, channels, accou
             <span className={cn(
               "rounded-full px-3 py-1 text-[10px] font-semibold",
               accountInfo?.status === 'CONNECTED'
-                ? "bg-[#5B45FF]0/10 text-[#5B45FF]0"
+                ? "bg-[#5B45FF]/10 text-[#5B45FF]"
                 : "bg-slate-500/10 text-slate-500"
             )}>
               {accountInfo?.status || 'Unknown'}
@@ -3914,7 +3912,7 @@ function OverviewSection({ isDark, templates, broadcasts, stats, channels, accou
                     <span className={cn(
                       "rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize",
                       normalizedStatus === 'completed'
-                        ? "bg-[#5B45FF]0/10 text-[#5B45FF]0"
+                        ? "bg-[#5B45FF]/10 text-[#5B45FF]"
                         : normalizedStatus === 'failed'
                           ? "bg-rose-500/10 text-rose-500"
                           : normalizedStatus === 'processing' || normalizedStatus === 'pending'
@@ -3954,7 +3952,7 @@ function OverviewSection({ isDark, templates, broadcasts, stats, channels, accou
                 className={cn(
                   "flex items-center gap-3 rounded-[1.2rem] border p-3 transition-all",
                   channel.connected
-                    ? (isDark ? "border-[#5B45FF]0/30 bg-[#5B45FF]0/10" : "border-[#5B45FF] bg-[#5B45FF]")
+                    ? (isDark ? "border-[#5B45FF]/30 bg-[#5B45FF]/10" : "border-[#5B45FF] bg-[#5B45FF] text-white")
                     : (isDark ? "border-gray-700/80 bg-gray-950/45 opacity-80" : "border-slate-200 bg-slate-50/90 opacity-85")
                 )}
               >
@@ -3966,11 +3964,11 @@ function OverviewSection({ isDark, templates, broadcasts, stats, channels, accou
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">{channel.name}</p>
-                  <p className="text-xs text-slate-500 truncate">{channel.detail}</p>
+                  <p className={cn("text-xs truncate", channel.connected && !isDark ? "text-white/75" : "text-slate-500")}>{channel.detail}</p>
                 </div>
                 <span className={cn(
                   "rounded-full px-2.5 py-1 text-[10px] font-semibold",
-                  channel.connected ? "bg-[#5B45FF]0/10 text-[#5B45FF]0" : "bg-slate-500/10 text-slate-500"
+                  channel.connected ? (isDark ? "bg-[#5B45FF]/10 text-[#5B45FF]" : "bg-white text-[#5B45FF]") : "bg-slate-500/10 text-slate-500"
                 )}>
                   {channel.connected ? 'Connected' : 'Not connected'}
                 </span>
@@ -4035,6 +4033,11 @@ function InboxSection({
   const [showCatalogPicker, setShowCatalogPicker] = useState(false);
   const [sendingTemplate, setSendingTemplate] = useState(false);
   const [pendingTemplateConfirmation, setPendingTemplateConfirmation] = useState<PendingTemplateConfirmation | null>(null);
+  const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+  const [newChatName, setNewChatName] = useState("");
+  const [newChatPhone, setNewChatPhone] = useState("");
+  const [newChatMessage, setNewChatMessage] = useState("");
+  const [sendingNewChat, setSendingNewChat] = useState(false);
   const [sendingMedia, setSendingMedia] = useState(false);
   const [sendingCatalog, setSendingCatalog] = useState(false);
   const [showChatFilterPopup, setShowChatFilterPopup] = useState(false);
@@ -4464,6 +4467,131 @@ function InboxSection({
     setSending(false);
   };
 
+  const closeNewChat = (force = false) => {
+    if (sendingNewChat && !force) return;
+    setIsNewChatOpen(false);
+    setNewChatName("");
+    setNewChatPhone("");
+    setNewChatMessage("");
+  };
+
+  const handleNewChatSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (sendingNewChat || !auth.currentUser) return;
+
+    const number = normalizePhoneDigits(newChatPhone);
+    const messageText = newChatMessage.trim();
+    const contactName = newChatName.trim() || number;
+
+    if (number.length < 7) {
+      showAppDialog({ tone: 'warning', message: 'Enter a WhatsApp number with country code.' });
+      return;
+    }
+
+    if (!messageText) {
+      showAppDialog({ tone: 'warning', message: 'Type a message before sending.' });
+      return;
+    }
+
+    setSendingNewChat(true);
+    try {
+      const result = await whatsappService.sendTextMessage(number, messageText);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to send message.');
+      }
+
+      const timestampIso = new Date().toISOString();
+      const existingContact = contacts.find((contact) => phonesMatch(getContactPhone(contact), number));
+      let contactDocId = existingContact?.id && !String(existingContact.id).startsWith('live_')
+        ? existingContact.id
+        : '';
+
+      const contactPayload = {
+        fullName: existingContact?.fullName || existingContact?.name || contactName,
+        name: existingContact?.name || contactName,
+        whatsappNumber: number,
+        phone: number,
+        lastMessage: messageText,
+        lastMessageTime: timestampIso,
+        unreadCount: 0,
+        status: existingContact?.status || 'Active',
+        tags: existingContact?.tags || [],
+        notes: existingContact?.notes || '',
+        customParams: existingContact?.customParams || {},
+        updatedAt: timestampIso
+      };
+
+      if (contactDocId) {
+        await setDoc(doc(db, 'users', auth.currentUser.uid, 'contacts', contactDocId), contactPayload, { merge: true });
+      } else {
+        const existingContactSnapshot = await getDocs(query(
+          collection(db, 'users', auth.currentUser.uid, 'contacts'),
+          where('whatsappNumber', '==', number),
+          limit(1)
+        ));
+
+        if (existingContactSnapshot.empty) {
+          const contactRef = await addDoc(collection(db, 'users', auth.currentUser.uid, 'contacts'), {
+            ...contactPayload,
+            createdAt: timestampIso
+          });
+          contactDocId = contactRef.id;
+        } else {
+          const existingContactDoc = existingContactSnapshot.docs[0];
+          contactDocId = existingContactDoc.id;
+          await setDoc(existingContactDoc.ref, contactPayload, { merge: true });
+        }
+      }
+
+      const sentMsg = {
+        from: accountInfo?.displayPhoneNumber || 'Me',
+        to: number,
+        text: messageText,
+        timestamp: Date.now(),
+        direction: 'outbound',
+        status: 'SENT',
+        whatsappId: result.data?.messages?.[0]?.id
+      };
+      const savedSentMessage = await saveMessageRecord(auth.currentUser.uid, sentMsg);
+      const confirmedMessage = normalizeMessageRecord({
+        ...sentMsg,
+        id: savedSentMessage.docId,
+        whatsappId: sentMsg.whatsappId || savedSentMessage.docId
+      });
+
+      setMessages(prev => mergeMessages(prev, [confirmedMessage]));
+      setContacts(prev => upsertLiveContact(prev, {
+        phone: number,
+        name: contactName,
+        text: messageText,
+        timestamp: sentMsg.timestamp,
+        outbound: true
+      }).map((contact) => (
+        phonesMatch(getContactPhone(contact), number)
+          ? {
+              ...contact,
+              id: contactDocId || contact.id,
+              fullName: contact.fullName || contactName,
+              name: contact.name || contactName,
+              whatsappNumber: number,
+              phone: number,
+              lastMessage: messageText,
+              lastMessageTime: timestampIso,
+              unreadCount: 0
+            }
+          : contact
+      )));
+      setSelectedChatId(contactDocId || number);
+      setShowChatList(false);
+      closeNewChat(true);
+    } catch (error: any) {
+      console.error('Failed to send new chat message:', error);
+      showAppDialog({ tone: 'error', message: error.message || 'Failed to send message.' });
+    } finally {
+      setSendingNewChat(false);
+    }
+  };
+
   const applyWrapFormatting = (marker: '*' | '_') => {
     if (!newMessage.trim()) {
       setNewMessage(`${marker}${marker}`);
@@ -4803,7 +4931,7 @@ function InboxSection({
                     type="button"
                     onClick={handleSaveContactInfo}
                     disabled={savingInfo || !hasPendingChanges}
-                    className="rounded-xl bg-[#5B45FF]0 px-3 py-2 text-[11px] font-semibold text-white shadow-sm hover:bg-[#5B45FF] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-xl bg-[#5B45FF] px-3 py-2 text-[11px] font-semibold text-white shadow-sm hover:bg-[#5B45FF] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {savingInfo ? 'Saving...' : 'Save'}
                   </button>
@@ -4837,7 +4965,17 @@ function InboxSection({
       )}>
         <div className={cn("p-3.5 border-b space-y-2.5", isDark ? "border-white/8" : "border-slate-200/80")}>
           <div className="relative">
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">Channels</p>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">Channels</p>
+              <button
+                type="button"
+                onClick={() => setIsNewChatOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#5B45FF] px-3 py-2 text-[11px] font-bold text-white shadow-sm transition-all hover:bg-[#4b38df]"
+              >
+                <Plus size={14} />
+                New Chat
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => setIsChannelMenuOpen((prev) => !prev)}
@@ -4890,7 +5028,7 @@ function InboxSection({
                       </div>
                     </div>
                     {channel.isAvailable ? (
-                      <span className="rounded-full bg-[#5B45FF]0/10 px-2 py-1 text-[10px] font-semibold text-[#5B45FF]0">Available</span>
+                      <span className="rounded-full bg-[#5B45FF]/10 px-2 py-1 text-[10px] font-semibold text-[#5B45FF]">Available</span>
                     ) : (
                       <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-500">Under development</span>
                     )}
@@ -4983,7 +5121,7 @@ function InboxSection({
                           className={cn(
                             "rounded-full px-3 py-1 text-[10px] font-semibold transition-all",
                             timePeriodFilter === option.id
-                              ? "bg-[#5B45FF]0 text-white"
+                              ? "bg-[#5B45FF] text-white"
                               : (isDark ? "bg-white/10 text-slate-300" : "bg-slate-100 text-slate-600")
                           )}
                         >
@@ -5009,7 +5147,7 @@ function InboxSection({
                     <button
                       type="button"
                       onClick={() => setShowChatFilterPopup(false)}
-                      className="rounded-xl bg-[#5B45FF]0 px-3 py-2 text-[11px] font-semibold text-white"
+                      className="rounded-xl bg-[#5B45FF] px-3 py-2 text-[11px] font-semibold text-white"
                     >
                       Apply
                     </button>
@@ -5026,7 +5164,7 @@ function InboxSection({
                 className={cn(
                   "px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap",
                   activeFilter === f
-                    ? "bg-[#5B45FF]0 text-white"
+                    ? "bg-[#5B45FF] text-white"
                     : (isDark ? "bg-gray-800 text-gray-400 hover:text-white" : "bg-gray-100 text-gray-500 hover:text-gray-900")
                 )}
               >
@@ -5058,6 +5196,7 @@ function InboxSection({
             const isStarred = starredIds.has(contactId);
             const isFavorite = favoriteIds.has(contactId);
             const contactPreviewText = resolveConversationPreviewText(contact, contact.lastMessage);
+            const isSelectedContactRow = Boolean(selectedContact && (selectedContact.id || selectedContact.whatsappNumber) === contactId);
             
             return (
               <button 
@@ -5070,8 +5209,8 @@ function InboxSection({
                 className={cn(
                   "w-full p-3.5 flex gap-3 transition-all text-left border-b group",
                   isDark ? "border-gray-800/50" : "border-gray-100",
-                  selectedContact && (selectedContact.id || selectedContact.whatsappNumber) === contactId
-                    ? (isDark ? "bg-[#5B45FF]0/10" : "bg-[#5B45FF]/80") 
+                  isSelectedContactRow
+                    ? (isDark ? "bg-[#5B45FF]/10" : "bg-[#5B45FF]/80 text-white") 
                     : (isDark ? "hover:bg-white/5" : "hover:bg-slate-50")
                 )}
               >
@@ -5082,7 +5221,7 @@ function InboxSection({
                     className="w-10 h-10 rounded-full object-cover"
                     referrerPolicy="no-referrer"
                   />
-                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#5B45FF]0 border-2 border-[#111827] rounded-full" />
+                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#5B45FF] border-2 border-[#111827] rounded-full" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start">
@@ -5090,20 +5229,20 @@ function InboxSection({
                     <div className="flex items-center gap-1 shrink-0 ml-2">
                       {isFavorite && <Heart size={10} className="text-red-500 fill-red-500" />}
                       {isStarred && <Star size={10} className="text-yellow-500 fill-yellow-500" />}
-                      <span className="text-[9px] md:text-[10px] text-gray-500 uppercase">
+                      <span className={cn("text-[9px] md:text-[10px] uppercase", isSelectedContactRow && !isDark ? "text-white/75" : "text-gray-500")}>
                         {contact.lastMessageTime ? new Date(contact.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                       </span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center mt-1">
-                    <p className="text-[11px] text-gray-400 truncate flex-1">{contactPreviewText || contact.whatsappNumber}</p>
+                    <p className={cn("text-[11px] truncate flex-1", isSelectedContactRow && !isDark ? "text-white/75" : "text-gray-400")}>{contactPreviewText || contact.whatsappNumber}</p>
                     {contact.unreadCount > 0 && (
                       <AnimatePresence initial={false}>
                         <motion.span
                           initial={{ opacity: 0, scale: 0.7 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.6 }}
-                          className="bg-[#5B45FF]0 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-2"
+                          className="bg-[#5B45FF] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-2"
                         >
                         {contact.unreadCount}
                         </motion.span>
@@ -5154,7 +5293,7 @@ function InboxSection({
                   disabled={!selectedContactPhone || selectedContactOnActiveCall}
                   className={cn(
                     "p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                    selectedContactOnActiveCall ? "text-[#5B45FF]0" : "hover:text-white"
+                    selectedContactOnActiveCall ? "text-[#5B45FF]" : "hover:text-white"
                   )}
                 >
                   <Phone size={18} />
@@ -5179,7 +5318,7 @@ function InboxSection({
               <div className="relative z-0 space-y-3">
                 {loadingMessages ? (
                   <div className="flex justify-center items-center h-full">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5B45FF]0"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5B45FF]"></div>
                   </div>
                 ) : (!Array.isArray(chatMessages) || chatMessages.length === 0) ? (
                   <div className="flex justify-center items-center h-full text-gray-500 text-sm">
@@ -5244,7 +5383,7 @@ function InboxSection({
                           isFailedMessage
                             ? (isDark ? "rounded-tr-sm bg-rose-500 text-white shadow-[0_16px_35px_rgba(244,63,94,0.24)]" : "rounded-tr-sm bg-rose-100 text-slate-900 border border-rose-200")
                             : isSentByUs 
-                            ? (isDark ? "rounded-tr-sm bg-[#5B45FF]0 text-white shadow-[0_16px_35px_rgba(91,69,255,0.24)]" : "rounded-tr-sm bg-[#5B45FF] text-slate-900 border border-[#5B45FF]")
+                            ? (isDark ? "rounded-tr-sm bg-[#5B45FF] text-white shadow-[0_16px_35px_rgba(91,69,255,0.24)]" : "rounded-tr-sm bg-[#5B45FF] text-white border border-[#5B45FF]")
                             : (isDark ? "rounded-tl-sm bg-white/8 text-white border border-white/8" : "rounded-tl-sm bg-white/92 text-gray-900 border border-white")
                         )}>
                           {isTemplateMessage && (
@@ -5255,7 +5394,7 @@ function InboxSection({
                                   ? "bg-white/15 text-white"
                                   : isSentByUs
                                     ? (isDark ? "bg-white/15 text-white" : "border border-white/80 bg-white/95 text-[#5B45FF]")
-                                    : "bg-[#5B45FF] text-[#5B45FF]"
+                                    : "bg-[#5B45FF] text-white"
                               )}>
                                 Template
                               </span>
@@ -5281,7 +5420,7 @@ function InboxSection({
                                   ? "bg-rose-500/15 text-rose-200"
                                   : isSentByUs || isFailedMessage
                                     ? "bg-white/15 text-white/90"
-                                    : "bg-[#5B45FF]0/10 text-[#5B45FF]"
+                                    : "bg-[#5B45FF]/10 text-[#5B45FF]"
                               )}>
                                 <Phone size={12} />
                                 <span>{callInfo.label}</span>
@@ -5313,7 +5452,7 @@ function InboxSection({
                                       "inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-bold transition-all disabled:cursor-not-allowed disabled:opacity-50",
                                       isSentByUs || isFailedMessage
                                         ? "bg-white/15 text-white hover:bg-white/20"
-                                        : "bg-[#5B45FF]0 text-white hover:bg-[#5B45FF]"
+                                        : "bg-[#5B45FF] text-white hover:bg-[#5B45FF]"
                                     )}
                                   >
                                     <Phone size={13} />
@@ -5533,7 +5672,7 @@ function InboxSection({
                                     ? "bg-white/15 text-white"
                                     : isSentByUs
                                       ? (isDark ? "bg-white/15 text-white" : "border border-white/80 bg-white/95 text-[#5B45FF]")
-                                      : "bg-[#5B45FF] text-[#5B45FF]"
+                                      : "bg-[#5B45FF] text-white"
                                 )}>
                                   Template
                                 </span>
@@ -5736,7 +5875,7 @@ function InboxSection({
                                 type="button"
                                 onClick={() => handleCatalogSend()}
                                 disabled={!manualCatalogRetailerId.trim() || sendingCatalog}
-                                className="rounded-xl bg-[#5B45FF]0 px-3 py-2 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                className="rounded-xl bg-[#5B45FF] px-3 py-2 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 Send
                               </button>
@@ -5764,7 +5903,7 @@ function InboxSection({
                                       <p className="text-xs font-semibold truncate">{product.name || product.productRetailerId || 'Catalog product'}</p>
                                       <p className="mt-1 text-[10px] text-slate-500 truncate">{product.productRetailerId || product.id}</p>
                                     </div>
-                                    <div className="text-right text-[10px] text-[#5B45FF]0">
+                                    <div className="text-right text-[10px] text-[#5B45FF]">
                                       {product.price ? `${product.currency || ''} ${product.price}`.trim() : 'Share'}
                                     </div>
                                   </div>
@@ -5785,7 +5924,7 @@ function InboxSection({
                     className={cn(
                       "flex h-10 w-10 items-center justify-center rounded-xl transition-all",
                       showComposerTools
-                        ? (isDark ? "bg-[#5B45FF]0 text-white" : "bg-[#5B45FF]0 text-white shadow-sm")
+                        ? (isDark ? "bg-[#5B45FF] text-white" : "bg-[#5B45FF] text-white shadow-sm")
                         : (isDark ? "text-gray-400 hover:bg-white/10 hover:text-white" : "text-gray-500 hover:bg-white hover:text-slate-900")
                     )}
                     title={showComposerTools ? 'Hide composer tools' : 'Show composer tools'}
@@ -5808,7 +5947,7 @@ function InboxSection({
                     disabled={!newMessage.trim() || sending}
                     className={cn(
                       "p-2 rounded-xl transition-all",
-                      newMessage.trim() ? "bg-[#5B45FF]0 text-white" : "text-gray-500"
+                      newMessage.trim() ? "bg-[#5B45FF] text-white" : "text-gray-500"
                     )}
                   >
                     <Send size={20} />
@@ -5836,9 +5975,17 @@ function InboxSection({
               </div>
               <h3 className={cn("text-lg font-bold mb-2", isDark ? "text-white" : "text-gray-900")}>Your Messages</h3>
               <p className={cn("text-sm max-w-xs", isDark ? "text-gray-400" : "text-gray-500")}>Select a contact from the list to start chatting.</p>
+              <button
+                type="button"
+                onClick={() => setIsNewChatOpen(true)}
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#5B45FF] px-6 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#4b38df]"
+              >
+                <Plus size={16} />
+                New Chat
+              </button>
               <button 
                 onClick={() => setShowChatList(true)}
-                className="md:hidden mt-6 px-6 py-2 bg-[#5B45FF]0 text-white rounded-xl font-bold text-sm shadow-sm"
+                className="md:hidden mt-3 px-6 py-2 bg-[#5B45FF] text-white rounded-xl font-bold text-sm shadow-sm"
               >
                 View Contacts
               </button>
@@ -5906,6 +6053,101 @@ function InboxSection({
       )}
 
       <AnimatePresence>
+        {isNewChatOpen && (
+          <motion.div
+            className="absolute inset-0 z-[125] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => closeNewChat()}
+          >
+            <motion.form
+              initial={{ opacity: 0, y: 20, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+              onClick={(event) => event.stopPropagation()}
+              onSubmit={handleNewChatSubmit}
+              className={cn(
+                "w-full max-w-md rounded-[1.7rem] border p-5 shadow-[0_28px_80px_rgba(15,23,42,0.24)]",
+                isDark ? "border-gray-800 bg-[#111827] text-white" : "border-slate-200 bg-white text-slate-900"
+              )}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#5B45FF]">WhatsApp</p>
+                  <h3 className="mt-2 text-xl font-black tracking-tight">New Chat</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => closeNewChat()}
+                  disabled={sendingNewChat}
+                  className={cn("flex h-9 w-9 items-center justify-center rounded-xl transition-all disabled:opacity-50", isDark ? "bg-white/10 text-slate-200 hover:bg-white/15" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={newChatPhone}
+                    onChange={(event) => setNewChatPhone(event.target.value)}
+                    placeholder="+91 98765 43210"
+                    autoFocus
+                    className={cn("w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-all focus:border-[#5B45FF]", isDark ? "border-gray-700 bg-gray-900 text-white" : "border-slate-200 bg-slate-50 text-slate-900")}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Name</label>
+                  <input
+                    type="text"
+                    value={newChatName}
+                    onChange={(event) => setNewChatName(event.target.value)}
+                    placeholder="Optional"
+                    className={cn("w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-all focus:border-[#5B45FF]", isDark ? "border-gray-700 bg-gray-900 text-white" : "border-slate-200 bg-slate-50 text-slate-900")}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Message</label>
+                  <textarea
+                    value={newChatMessage}
+                    onChange={(event) => setNewChatMessage(event.target.value)}
+                    placeholder="Type a message..."
+                    rows={5}
+                    className={cn("w-full resize-none rounded-2xl border px-4 py-3 text-sm outline-none transition-all focus:border-[#5B45FF]", isDark ? "border-gray-700 bg-gray-900 text-white" : "border-slate-200 bg-slate-50 text-slate-900")}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-5 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => closeNewChat()}
+                  disabled={sendingNewChat}
+                  className={cn("rounded-xl px-4 py-3 text-sm font-bold transition-all disabled:opacity-50", isDark ? "bg-white/10 text-slate-200 hover:bg-white/15" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={sendingNewChat || normalizePhoneDigits(newChatPhone).length < 7 || !newChatMessage.trim()}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#5B45FF] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]/20 transition-all hover:bg-[#4b38df] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {sendingNewChat ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
+                  {sendingNewChat ? 'Sending...' : 'Send Message'}
+                </button>
+              </div>
+            </motion.form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {pendingTemplateConfirmation && (
           <motion.div
             className="absolute inset-0 z-[120] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
@@ -5933,7 +6175,7 @@ function InboxSection({
                 <div>
                   <div className={cn(
                     "inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em]",
-                    isDark ? "border-[#5B45FF]0/30 bg-[#5B45FF]0/10 text-[#5B45FF]" : "border-[#5B45FF] bg-[#5B45FF] text-[#5B45FF]"
+                    isDark ? "border-[#5B45FF]/30 bg-[#5B45FF]/10 text-[#5B45FF]" : "border-[#5B45FF] bg-[#5B45FF] text-white"
                   )}>
                     Template Preview
                   </div>
@@ -5971,7 +6213,7 @@ function InboxSection({
                   isDark ? "border-white/10 bg-white" : "border-white bg-white"
                 )}>
                   <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                    <span className="rounded-full bg-[#5B45FF] px-2 py-1 text-[9px] font-bold uppercase tracking-[0.18em] text-[#5B45FF]">
+                    <span className="rounded-full bg-[#5B45FF] px-2 py-1 text-[9px] font-bold uppercase tracking-[0.18em] text-white">
                       Template Message
                     </span>
                     <span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-600">
@@ -6022,7 +6264,7 @@ function InboxSection({
                   type="button"
                   onClick={() => void handleConfirmTemplateSend()}
                   disabled={sendingTemplate}
-                  className="rounded-xl bg-[#5B45FF]0 px-4 py-2 text-sm font-semibold text-white hover:bg-[#5B45FF] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-xl bg-[#5B45FF] px-4 py-2 text-sm font-semibold text-white hover:bg-[#5B45FF] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {sendingTemplate ? 'Sending...' : 'Send Template'}
                 </button>
@@ -6294,7 +6536,7 @@ function CreateTemplateModal({
         <div className="max-h-[92vh] overflow-y-auto overscroll-contain p-8">
           <div className="flex items-start justify-between gap-6 mb-8">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#5B45FF]0">Template builder</p>
+              <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#5B45FF]">Template builder</p>
               <h3 className="text-3xl font-black tracking-tight mt-2">Create a New Template</h3>
               <p className={cn("mt-2 text-sm", isDark ? "text-gray-400" : "text-gray-600")}>
                 Build a polished campaign template with structured content, rich guidance, and action-focused buttons.
@@ -6319,7 +6561,7 @@ function CreateTemplateModal({
                   }
                 }}
                 placeholder="summer_sale_launch"
-                className={cn("w-full p-4 rounded-2xl outline-none border focus:border-[#5B45FF]0 transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200")}
+                className={cn("w-full p-4 rounded-2xl outline-none border focus:border-[#5B45FF] transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200")}
                 required
               />
               <p className="text-xs text-gray-500">Spaces are automatically converted to underscores.</p>
@@ -6327,7 +6569,7 @@ function CreateTemplateModal({
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-400 uppercase">Category</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className={cn("w-full p-4 rounded-2xl outline-none border focus:border-[#5B45FF]0 transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200")}>
+              <select value={category} onChange={(e) => setCategory(e.target.value)} className={cn("w-full p-4 rounded-2xl outline-none border focus:border-[#5B45FF] transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200")}>
                 {TEMPLATE_CATEGORIES.map((item) => (
                   <option key={item.value} value={item.value}>{item.label}</option>
                 ))}
@@ -6336,7 +6578,7 @@ function CreateTemplateModal({
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-400 uppercase">Language</label>
-              <select value={language} onChange={(e) => setLanguage(e.target.value)} className={cn("w-full p-4 rounded-2xl outline-none border focus:border-[#5B45FF]0 transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200")}>
+              <select value={language} onChange={(e) => setLanguage(e.target.value)} className={cn("w-full p-4 rounded-2xl outline-none border focus:border-[#5B45FF] transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200")}>
                 {TEMPLATE_LANGUAGES.map((item) => (
                   <option key={item.value} value={item.value}>{item.label}</option>
                 ))}
@@ -6359,8 +6601,8 @@ function CreateTemplateModal({
                   className={cn(
                     "px-4 py-3 rounded-2xl border text-sm font-bold transition-all",
                     headerType === type
-                      ? "bg-[#5B45FF]0 text-white border-[#5B45FF]0"
-                      : (isDark ? "border-gray-700 text-gray-300 hover:border-[#5B45FF]0" : "border-gray-200 text-gray-700 hover:border-[#5B45FF]0")
+                      ? "bg-[#5B45FF] text-white border-[#5B45FF]"
+                      : (isDark ? "border-gray-700 text-gray-300 hover:border-[#5B45FF]" : "border-gray-200 text-gray-700 hover:border-[#5B45FF]")
                   )}
                 >
                   {type === 'NONE' ? 'None' : type[0] + type.slice(1).toLowerCase()}
@@ -6373,7 +6615,7 @@ function CreateTemplateModal({
                 value={headerText}
                 onChange={(e) => setHeaderText(e.target.value)}
                 placeholder="Enter your campaign title"
-                className={cn("w-full p-4 rounded-2xl outline-none border focus:border-[#5B45FF]0 transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")}
+                className={cn("w-full p-4 rounded-2xl outline-none border focus:border-[#5B45FF] transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")}
               />
             )}
 
@@ -6382,7 +6624,7 @@ function CreateTemplateModal({
                 value={headerMediaSample}
                 onChange={(e) => setHeaderMediaSample(e.target.value)}
                 placeholder="Optional media sample URL or handle for approval"
-                className={cn("w-full p-4 rounded-2xl outline-none border focus:border-[#5B45FF]0 transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")}
+                className={cn("w-full p-4 rounded-2xl outline-none border focus:border-[#5B45FF] transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")}
               />
             )}
           </div>
@@ -6399,7 +6641,7 @@ function CreateTemplateModal({
               <button type="button" onClick={() => insertIntoBody('_', '_')} className={cn("px-3 py-2 rounded-xl text-sm font-bold", isDark ? "bg-gray-800 text-gray-200" : "bg-white border border-gray-200 text-gray-700")}>Italics</button>
               <button type="button" onClick={() => insertIntoBody('<u>', '</u>')} className={cn("px-3 py-2 rounded-xl text-sm font-bold", isDark ? "bg-gray-800 text-gray-200" : "bg-white border border-gray-200 text-gray-700")}>Underline</button>
               <button type="button" onClick={() => insertIntoBody('~', '~')} className={cn("px-3 py-2 rounded-xl text-sm font-bold", isDark ? "bg-gray-800 text-gray-200" : "bg-white border border-gray-200 text-gray-700")}>Strikethrough</button>
-              <button type="button" onClick={insertVariable} className="px-3 py-2 rounded-xl text-sm font-bold bg-[#5B45FF]0 text-white">Add Variable</button>
+              <button type="button" onClick={insertVariable} className="px-3 py-2 rounded-xl text-sm font-bold bg-[#5B45FF] text-white">Add Variable</button>
             </div>
 
             <textarea
@@ -6407,7 +6649,7 @@ function CreateTemplateModal({
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Write the message body here..."
-              className={cn("w-full p-4 rounded-2xl outline-none border h-40 focus:border-[#5B45FF]0 transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")}
+              className={cn("w-full p-4 rounded-2xl outline-none border h-40 focus:border-[#5B45FF] transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")}
               required
             />
           </div>
@@ -6421,14 +6663,14 @@ function CreateTemplateModal({
               value={footer}
               onChange={(e) => setFooter(e.target.value)}
               placeholder="Footer Field"
-              className={cn("w-full p-4 rounded-2xl outline-none border focus:border-[#5B45FF]0 transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")}
+              className={cn("w-full p-4 rounded-2xl outline-none border focus:border-[#5B45FF] transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")}
             />
           </div>
 
           <div className={cn("rounded-3xl p-6 border", isDark ? "bg-gray-800/30 border-gray-700" : "bg-gray-50 border-gray-200")}>
             <div className="flex items-center gap-2 mb-1">
               <h4 className="text-xl font-bold">Buttons</h4>
-              <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-[#5B45FF]0/10 text-[#5B45FF]0 uppercase tracking-wider">Recommended</span>
+              <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-[#5B45FF]/10 text-[#5B45FF] uppercase tracking-wider">Recommended</span>
             </div>
             <p className={cn("text-sm mt-1 mb-5", isDark ? "text-gray-400" : "text-gray-600")}>
               Insert buttons so your customers can take action and engage with your message!
@@ -6441,20 +6683,20 @@ function CreateTemplateModal({
                   value={websiteButtonText}
                   onChange={(e) => setWebsiteButtonText(e.target.value)}
                   placeholder="Button label"
-                  className={cn("w-full p-4 rounded-2xl outline-none border focus:border-[#5B45FF]0 transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")}
+                  className={cn("w-full p-4 rounded-2xl outline-none border focus:border-[#5B45FF] transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")}
                 />
                 <input
                   value={websiteButtonUrl}
                   onChange={(e) => setWebsiteButtonUrl(e.target.value)}
                   placeholder="https://yourwebsite.com"
-                  className={cn("w-full p-4 rounded-2xl outline-none border focus:border-[#5B45FF]0 transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")}
+                  className={cn("w-full p-4 rounded-2xl outline-none border focus:border-[#5B45FF] transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")}
                 />
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h5 className="font-bold">Quick Replied</h5>
-                  <button type="button" onClick={addQuickReply} disabled={quickReplies.length >= 3} className="text-sm font-bold text-[#5B45FF]0 disabled:opacity-40">+ Add</button>
+                  <button type="button" onClick={addQuickReply} disabled={quickReplies.length >= 3} className="text-sm font-bold text-[#5B45FF] disabled:opacity-40">+ Add</button>
                 </div>
                 {quickReplies.map((reply, index) => (
                   <div key={index} className="flex gap-2">
@@ -6462,7 +6704,7 @@ function CreateTemplateModal({
                       value={reply}
                       onChange={(e) => updateQuickReply(index, e.target.value)}
                       placeholder={`Quick reply ${index + 1}`}
-                      className={cn("flex-1 p-4 rounded-2xl outline-none border focus:border-[#5B45FF]0 transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")}
+                      className={cn("flex-1 p-4 rounded-2xl outline-none border focus:border-[#5B45FF] transition-all", isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")}
                     />
                     {quickReplies.length > 1 && (
                       <button type="button" onClick={() => removeQuickReply(index)} className="px-4 rounded-2xl text-sm font-bold text-red-500 bg-red-500/10">
@@ -6477,7 +6719,7 @@ function CreateTemplateModal({
 
             <div className="flex justify-end gap-4">
               <button type="button" onClick={onClose} className="px-6 py-3 rounded-xl font-bold text-gray-500">Cancel</button>
-              <button type="submit" disabled={submitting || !templateName || !body.trim()} className="px-6 py-3 rounded-xl font-bold bg-[#5B45FF]0 text-white shadow-lg shadow-[#5B45FF]0/20 disabled:opacity-50">
+              <button type="submit" disabled={submitting || !templateName || !body.trim()} className="px-6 py-3 rounded-xl font-bold bg-[#5B45FF] text-white shadow-lg shadow-[#5B45FF]/20 disabled:opacity-50">
                 {submitting ? 'Submitting...' : 'Submit for Approval'}
               </button>
             </div>
@@ -6761,7 +7003,7 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
     >
       <div className={cn(
         "inline-flex w-fit flex-wrap gap-2 rounded-[1.4rem] border p-2 backdrop-blur-xl",
-        isDark ? "border-[#5B45FF]/10 bg-[#5B45FF]0/8 shadow-[0_18px_50px_rgba(91,69,255,0.08)]" : "border-[#5B45FF] bg-white/85 shadow-[0_18px_50px_rgba(91,69,255,0.12)]"
+        isDark ? "border-[#5B45FF]/10 bg-[#5B45FF]/8 shadow-[0_18px_50px_rgba(91,69,255,0.08)]" : "border-[#5B45FF] bg-white/85 shadow-[0_18px_50px_rgba(91,69,255,0.12)]"
       )}>
         {[
           { key: 'new', label: 'New Broadcast' },
@@ -6774,7 +7016,7 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
               "rounded-xl px-6 py-3 text-sm font-bold transition-all",
               tab === item.key
                 ? "bg-[#5B45FF] text-white shadow-lg shadow-[#5B45FF]/25"
-                : (isDark ? "text-slate-300 hover:bg-white/6" : "text-slate-600 hover:bg-[#5B45FF]")
+                : (isDark ? "text-slate-300 hover:bg-white/6" : "text-slate-600 hover:bg-[#5B45FF] hover:text-white")
             )}
           >
             {item.label}
@@ -6817,7 +7059,7 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                         onChange={(e) => setCampaignName(e.target.value)}
                         placeholder="e.g. April launch follow-up"
                         className={cn(
-                          "w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]0",
+                          "w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]",
                           isDark ? "border-gray-700 bg-gray-800 text-white" : "border-slate-200 bg-white text-slate-900"
                         )}
                       />
@@ -6828,7 +7070,7 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                         value={selectedTemplateName}
                         onChange={(e) => setSelectedTemplateName(e.target.value)}
                         className={cn(
-                          "w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]0",
+                          "w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]",
                           isDark ? "border-gray-700 bg-gray-800 text-white" : "border-slate-200 bg-white text-slate-900"
                         )}
                       >
@@ -6860,12 +7102,12 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                       className={cn(
                         "rounded-2xl border p-4 text-left transition-all",
                         audienceMode === 'csv'
-                          ? "border-[#5B45FF]0 bg-[#5B45FF]0/10"
+                          ? "border-[#5B45FF] bg-[#5B45FF]/10"
                           : (isDark ? "border-gray-700 bg-gray-800/60 hover:border-gray-600" : "border-slate-200 bg-white hover:border-slate-300")
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <FileUp className="text-[#5B45FF]0" size={18} />
+                        <FileUp className="text-[#5B45FF]" size={18} />
                         <div>
                           <p className="font-bold">Import Contacts via CSV</p>
                           <p className="mt-1 text-xs text-slate-500">Upload your file or start from a sample sheet.</p>
@@ -6878,7 +7120,7 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                       className={cn(
                         "rounded-2xl border p-4 text-left transition-all",
                         audienceMode === 'contacts'
-                          ? "border-[#5B45FF]0 bg-[#5B45FF]0/10"
+                          ? "border-[#5B45FF] bg-[#5B45FF]/10"
                           : (isDark ? "border-gray-700 bg-gray-800/60 hover:border-gray-600" : "border-slate-200 bg-white hover:border-slate-300")
                       )}
                     >
@@ -6896,9 +7138,9 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                     <div className="mt-5 grid gap-4 md:grid-cols-2">
                       <label className={cn(
                         "flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed px-5 py-8 text-center transition-all",
-                        isDark ? "border-gray-700 bg-gray-800/40 hover:border-[#5B45FF]0" : "border-slate-300 bg-white hover:border-[#5B45FF]0"
+                        isDark ? "border-gray-700 bg-gray-800/40 hover:border-[#5B45FF]" : "border-slate-300 bg-white hover:border-[#5B45FF]"
                       )}>
-                        <FileUp className="text-[#5B45FF]0" size={22} />
+                        <FileUp className="text-[#5B45FF]" size={22} />
                         <div>
                           <p className="font-bold">Upload CSV</p>
                           <p className="mt-1 text-xs text-slate-500">{csvFileName || 'Choose your contact file'}</p>
@@ -6945,7 +7187,7 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                             className={cn(
                               "flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition-all",
                               isSelected
-                                ? "border-[#5B45FF]0 bg-[#5B45FF]0/10"
+                                ? "border-[#5B45FF] bg-[#5B45FF]/10"
                                 : (isDark ? "border-gray-700 bg-slate-900/40 hover:border-gray-600" : "border-slate-200 bg-slate-50 hover:border-slate-300")
                             )}
                           >
@@ -6955,7 +7197,7 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                             </div>
                             <div className={cn(
                               "rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em]",
-                              isSelected ? "bg-[#5B45FF]0 text-white" : (isDark ? "bg-gray-800 text-slate-400" : "bg-white text-slate-500")
+                              isSelected ? "bg-[#5B45FF] text-white" : (isDark ? "bg-gray-800 text-slate-400" : "bg-white text-slate-500")
                             )}>
                               {isSelected ? 'Selected' : 'Select'}
                             </div>
@@ -6982,12 +7224,12 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                       className={cn(
                         "rounded-2xl border p-4 text-left transition-all",
                         sendMode === 'now'
-                          ? "border-[#5B45FF]0 bg-[#5B45FF]0/10"
+                          ? "border-[#5B45FF] bg-[#5B45FF]/10"
                           : (isDark ? "border-gray-700 bg-gray-800/60 hover:border-gray-600" : "border-slate-200 bg-white hover:border-slate-300")
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <Send className="text-[#5B45FF]0" size={18} />
+                        <Send className="text-[#5B45FF]" size={18} />
                         <div>
                           <p className="font-bold">Send now</p>
                           <p className="mt-1 text-xs text-slate-500">Launch this campaign as soon as you are ready.</p>
@@ -7000,7 +7242,7 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                       className={cn(
                         "rounded-2xl border p-4 text-left transition-all",
                         sendMode === 'schedule'
-                          ? "border-[#5B45FF]0 bg-[#5B45FF]0/10"
+                          ? "border-[#5B45FF] bg-[#5B45FF]/10"
                           : (isDark ? "border-gray-700 bg-gray-800/60 hover:border-gray-600" : "border-slate-200 bg-white hover:border-slate-300")
                       )}
                     >
@@ -7023,7 +7265,7 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                           value={scheduledDate}
                           onChange={(e) => setScheduledDate(e.target.value)}
                           className={cn(
-                            "w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]0",
+                            "w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]",
                             isDark ? "border-gray-700 bg-gray-800 text-white" : "border-slate-200 bg-white text-slate-900"
                           )}
                         />
@@ -7035,7 +7277,7 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                           value={scheduledTime}
                           onChange={(e) => setScheduledTime(e.target.value)}
                           className={cn(
-                            "w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]0",
+                            "w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]",
                             isDark ? "border-gray-700 bg-gray-800 text-white" : "border-slate-200 bg-white text-slate-900"
                           )}
                         />
@@ -7055,7 +7297,7 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                   type="button"
                   onClick={handleLaunchBroadcast}
                   disabled={launchingBroadcast}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#5B45FF]0 px-6 py-4 font-bold text-white shadow-lg shadow-[#5B45FF]0/20 transition-all hover:bg-[#5B45FF] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#5B45FF] px-6 py-4 font-bold text-white shadow-lg shadow-[#5B45FF]/20 transition-all hover:bg-[#5B45FF] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Send size={18} />
                   {launchingBroadcast ? 'Launching...' : 'Launch Broadcast'}
@@ -7168,7 +7410,7 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                       <td className="py-4 px-4 text-sm">{b.templateName}</td>
                       <td className="py-4 px-4">
                         <span className={cn("px-3 py-1 rounded-full text-xs font-bold", 
-                          b.status?.toLowerCase() === 'completed' ? "bg-[#5B45FF]0/10 text-[#5B45FF]0" : 
+                          b.status?.toLowerCase() === 'completed' ? "bg-[#5B45FF]/10 text-[#5B45FF]" : 
                           b.status?.toLowerCase() === 'processing' ? "bg-blue-500/10 text-blue-500" : 
                           "bg-gray-500/10 text-gray-500"
                         )}>
@@ -7202,7 +7444,7 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
             </div>
             <button 
               onClick={() => setIsCreateTemplateModalOpen(true)}
-              className="bg-[#5B45FF]0 hover:bg-[#5B45FF] text-white px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
+              className="bg-[#5B45FF] hover:bg-[#5B45FF] text-white px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
             >
               <Plus size={16} />
               Create New Template
@@ -7220,7 +7462,7 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                   <div className="flex justify-between items-start mb-4">
                     <h4 className="font-bold text-lg truncate pr-2">{t.name}</h4>
                     <span className={cn("px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0", 
-                      t.status === 'APPROVED' ? "bg-[#5B45FF]0/10 text-[#5B45FF]0" : 
+                      t.status === 'APPROVED' ? "bg-[#5B45FF]/10 text-[#5B45FF]" : 
                       t.status === 'REJECTED' ? "bg-red-500/10 text-red-500" : 
                       "bg-yellow-500/10 text-yellow-500"
                     )}>
@@ -7297,7 +7539,7 @@ function TemplatesSection({ isDark, templates, isCreateTemplateModalOpen, setIsC
 
             <button
               onClick={() => setIsCreateTemplateModalOpen(true)}
-              className="bg-[#5B45FF]0 hover:bg-[#5B45FF] text-white px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
+              className="bg-[#5B45FF] hover:bg-[#5B45FF] text-white px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
             >
               <Plus size={16} />
               Create New Template
@@ -7316,7 +7558,7 @@ function TemplatesSection({ isDark, templates, isCreateTemplateModalOpen, setIsC
                 <div className="flex justify-between items-start mb-4 gap-3">
                   <h4 className="font-bold text-lg truncate pr-2">{t.name}</h4>
                   <span className={cn("px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0",
-                    t.status === 'APPROVED' ? "bg-[#5B45FF]0/10 text-[#5B45FF]0" :
+                    t.status === 'APPROVED' ? "bg-[#5B45FF]/10 text-[#5B45FF]" :
                     t.status === 'REJECTED' ? "bg-red-500/10 text-red-500" :
                     "bg-yellow-500/10 text-yellow-500"
                   )}>
@@ -7351,7 +7593,7 @@ function TemplatesSection({ isDark, templates, isCreateTemplateModalOpen, setIsC
                       <td className="py-4 px-4 font-semibold">{t.name}</td>
                       <td className="py-4 px-4">
                         <span className={cn("px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                          t.status === 'APPROVED' ? "bg-[#5B45FF]0/10 text-[#5B45FF]0" :
+                          t.status === 'APPROVED' ? "bg-[#5B45FF]/10 text-[#5B45FF]" :
                           t.status === 'REJECTED' ? "bg-red-500/10 text-red-500" :
                           "bg-yellow-500/10 text-yellow-500"
                         )}>
@@ -7385,6 +7627,8 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
   
   const [newContactName, setNewContactName] = useState('');
   const [newContactPhone, setNewContactPhone] = useState('');
+  const [contactAvatarFile, setContactAvatarFile] = useState<File | null>(null);
+  const [contactAvatarPreview, setContactAvatarPreview] = useState('');
   const [customParams, setCustomParams] = useState<{name: string, value: string}[]>([]);
   
   const [isAdding, setIsAdding] = useState(false);
@@ -7416,6 +7660,55 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
 
   const displayContacts = syncedContacts;
 
+  const resetContactForm = () => {
+    setShowAddModal(false);
+    setShowEditModal(false);
+    setSelectedContact(null);
+    setNewContactName('');
+    setNewContactPhone('');
+    setContactAvatarFile(null);
+    setContactAvatarPreview('');
+    setCustomParams([]);
+  };
+
+  const handleContactAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showAppDialog({ tone: 'warning', message: 'Please choose an image file for the contact picture.' });
+      return;
+    }
+
+    if (file.size > MAX_CONTACT_AVATAR_BYTES) {
+      showAppDialog({ tone: 'warning', message: 'Please choose an image smaller than 5 MB.' });
+      return;
+    }
+
+    setContactAvatarFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setContactAvatarPreview(String(reader.result || ''));
+    reader.readAsDataURL(file);
+  };
+
+  const uploadContactAvatar = async (contactId: string) => {
+    if (!contactAvatarFile || !auth.currentUser) {
+      return '';
+    }
+
+    const extension = contactAvatarFile.name.split('.').pop()?.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg';
+    const avatarRef = storageRef(
+      storage,
+      `users/${auth.currentUser.uid}/contacts/${contactId}/profile-picture-${Date.now()}.${extension}`
+    );
+
+    await uploadBytes(avatarRef, contactAvatarFile, {
+      contentType: contactAvatarFile.type || 'image/jpeg'
+    });
+    return getDownloadURL(avatarRef);
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && auth.currentUser) {
@@ -7428,11 +7721,14 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
           for (const row of data) {
             const name = row.Name || row.fullName || row.name;
             const phone = row.Phone || row.whatsappNumber || row.phone;
+            const avatarUrl = row.Avatar || row.AvatarUrl || row.avatarUrl || row.Photo || row.photo || '';
             if (name && phone) {
               try {
                 await addDoc(collection(db, 'users', userId, 'contacts'), {
                   fullName: name,
                   whatsappNumber: String(phone).replace(/\D/g, ''),
+                  phone: String(phone).replace(/\D/g, ''),
+                  ...(String(avatarUrl).startsWith('http') ? { avatarUrl: String(avatarUrl) } : {}),
                   createdAt: new Date().toISOString(),
                   tags: row.Tags ? row.Tags.split(',').map((t: string) => t.trim()) : [],
                   notes: row.Notes || ''
@@ -7467,27 +7763,27 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
         return;
       }
 
-      const docRef = await addDoc(collection(db, 'users', auth.currentUser.uid, 'contacts'), {
+      const contactDocRef = doc(collection(db, 'users', auth.currentUser.uid, 'contacts'));
+      const avatarUrl = await uploadContactAvatar(contactDocRef.id);
+      await setDoc(contactDocRef, {
         fullName: newContactName.trim(),
         whatsappNumber: normalizedPhone,
         phone: normalizedPhone,
         customParams: paramsObj,
+        ...(avatarUrl ? { avatarUrl } : {}),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         tags: [],
         notes: ''
       });
-      const savedSnapshot = await getDoc(docRef);
+      const savedSnapshot = await getDoc(contactDocRef);
 
-      console.log('Contact saved to Firestore:', docRef.id);
-      console.log('Contact Firestore path:', docRef.path);
-      console.log('Contact projectId:', docRef.firestore.app.options.projectId);
+      console.log('Contact saved to Firestore:', contactDocRef.id);
+      console.log('Contact Firestore path:', contactDocRef.path);
+      console.log('Contact projectId:', contactDocRef.firestore.app.options.projectId);
       console.log('Contact read-back exists:', savedSnapshot.exists(), savedSnapshot.data());
       
-      setShowAddModal(false);
-      setNewContactName('');
-      setNewContactPhone('');
-      setCustomParams([]);
+      resetContactForm();
     } catch (error) {
       console.error(error);
       showAppDialog({ tone: 'error', message: 'An error occurred while adding the contact.' });
@@ -7505,15 +7801,16 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
         if (p.name) paramsObj[p.name] = p.value;
       });
 
+      const avatarUrl = await uploadContactAvatar(selectedContact.id);
       await updateDoc(doc(db, 'users', auth.currentUser.uid, 'contacts', selectedContact.id), {
         fullName: newContactName,
         whatsappNumber: newContactPhone.replace(/\D/g, ''),
         customParams: paramsObj,
+        ...(avatarUrl ? { avatarUrl } : {}),
         updatedAt: new Date().toISOString()
       });
 
-      setShowEditModal(false);
-      setSelectedContact(null);
+      resetContactForm();
     } catch (error) {
       console.error(error);
       showAppDialog({ tone: 'error', message: 'An error occurred while updating the contact.' });
@@ -7575,6 +7872,7 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
     const csv = Papa.unparse(displayContacts.map(c => ({
       Name: c.fullName,
       Phone: c.whatsappNumber,
+      AvatarUrl: getContactAvatarUrl(c),
       Tags: c.tags?.join(', ') || '',
       Notes: c.notes || ''
     })));
@@ -7593,6 +7891,8 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
     setSelectedContact(contact);
     setNewContactName(contact.fullName || contact.name || '');
     setNewContactPhone(contact.whatsappNumber || contact.phone || '');
+    setContactAvatarFile(null);
+    setContactAvatarPreview(getContactAvatarUrl(contact));
     
     // Extract custom parameters if available
     const params = [];
@@ -7674,11 +7974,7 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
-              onClick={() => {
-                setShowAddModal(false);
-                setShowEditModal(false);
-                setCustomParams([]);
-              }}
+              onClick={resetContactForm}
             />
             <motion.div
               initial={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -7689,13 +7985,32 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
             >
             <h3 className="text-xl font-bold mb-4">{showEditModal ? 'Edit Contact' : 'Add New Contact'}</h3>
             <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className={cn("h-16 w-16 shrink-0 overflow-hidden rounded-2xl border", isDark ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-gray-100")}>
+                  {contactAvatarPreview ? (
+                    <img src={contactAvatarPreview} alt="Contact profile" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-gray-400">
+                      <UserIcon size={24} />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <label className={cn("inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all", isDark ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-100 hover:bg-gray-200")}>
+                    <Camera size={16} />
+                    Upload Picture
+                    <input type="file" accept="image/*" className="hidden" onChange={handleContactAvatarUpload} />
+                  </label>
+                  <p className="mt-2 text-xs text-gray-500">Square JPG or PNG, up to 5 MB.</p>
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-400">Name</label>
                 <input 
                   type="text" 
                   value={newContactName}
                   onChange={(e) => setNewContactName(e.target.value)}
-                  className={cn("w-full p-3 rounded-xl border outline-none", isDark ? "bg-gray-800/50 border-gray-700 focus:border-[#5B45FF]0" : "bg-gray-50 border-gray-200 focus:border-[#5B45FF]0")}
+                  className={cn("w-full p-3 rounded-xl border outline-none", isDark ? "bg-gray-800/50 border-gray-700 focus:border-[#5B45FF]" : "bg-gray-50 border-gray-200 focus:border-[#5B45FF]")}
                   placeholder="John Doe"
                 />
               </div>
@@ -7706,7 +8021,7 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
                   value={newContactPhone}
                   onChange={(e) => setNewContactPhone(e.target.value)}
                   disabled={showEditModal} // Phone number is the identifier, shouldn't change
-                  className={cn("w-full p-3 rounded-xl border outline-none", isDark ? "bg-gray-800/50 border-gray-700 focus:border-[#5B45FF]0" : "bg-gray-50 border-gray-200 focus:border-[#5B45FF]0", showEditModal && "opacity-50 cursor-not-allowed")}
+                  className={cn("w-full p-3 rounded-xl border outline-none", isDark ? "bg-gray-800/50 border-gray-700 focus:border-[#5B45FF]" : "bg-gray-50 border-gray-200 focus:border-[#5B45FF]", showEditModal && "opacity-50 cursor-not-allowed")}
                   placeholder="e.g. 1234567890"
                 />
                 <p className="text-xs text-gray-500 mt-1">Include country code without + (e.g. 15559172686)</p>
@@ -7752,11 +8067,7 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
               <div className="flex justify-end gap-3 mt-6">
                 <button 
                   type="button"
-                  onClick={() => {
-                    setShowAddModal(false);
-                    setShowEditModal(false);
-                    setCustomParams([]);
-                  }}
+                  onClick={resetContactForm}
                   className={cn("px-4 py-2 rounded-xl font-medium", isDark ? "hover:bg-gray-800" : "hover:bg-gray-100")}
                 >
                   Cancel
@@ -7765,7 +8076,7 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
                   type="button"
                   onClick={showEditModal ? handleEditContact : handleAddContact}
                   disabled={isAdding || !newContactName || !newContactPhone}
-                  className="px-4 py-2 rounded-xl bg-[#5B45FF]0 text-white font-bold disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl bg-[#5B45FF] text-white font-bold disabled:opacity-50"
                 >
                   {isAdding ? 'Saving...' : 'Save Contact'}
                 </button>
@@ -7807,12 +8118,10 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
           </button>
           <button 
             onClick={() => {
-              setNewContactName('');
-              setNewContactPhone('');
-              setCustomParams([]);
+              resetContactForm();
               setShowAddModal(true);
             }}
-            className="px-6 py-3 rounded-2xl bg-[#5B45FF]0 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-[#5B45FF]0/20 hover:bg-[#5B45FF] transition-all"
+            className="px-6 py-3 rounded-2xl bg-[#5B45FF] text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-[#5B45FF]/20 hover:bg-[#5B45FF] transition-all"
           >
             <Plus size={18} />
             Add Contact
@@ -7833,9 +8142,23 @@ function ContactsSection({ isDark, contacts }: { isDark: boolean, contacts: any[
           <tbody className="divide-y divide-gray-800/50">
             {displayContacts.map((contact, idx) => {
               const phone = contact.whatsappNumber || contact.phone;
+              const avatarUrl = getContactAvatarUrl(contact);
               return (
                 <tr key={contact.id || idx} className={isDark ? "hover:bg-gray-800/30" : "hover:bg-gray-50"}>
-                  <td className="px-6 py-4 font-bold">{contact.fullName || contact.name || contact.whatsappNumber || 'Unknown'}</td>
+                  <td className="px-6 py-4 font-bold">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("h-10 w-10 shrink-0 overflow-hidden rounded-xl border", isDark ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-gray-100")}>
+                        {avatarUrl ? (
+                          <img src={avatarUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-gray-400">
+                            <UserIcon size={18} />
+                          </div>
+                        )}
+                      </div>
+                      <span className="min-w-0 truncate">{contact.fullName || contact.name || contact.whatsappNumber || 'Unknown'}</span>
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-400">
                     {formatPhoneWithCountryCode(phone)}
                   </td>
@@ -7927,7 +8250,7 @@ function DataCard({ title, data, isDark }: { title: string, data: any, isDark: b
   return (
     <div className={cn(
       "rounded-3xl border-2 overflow-hidden flex flex-col h-[450px] transition-all shadow-lg", 
-      isDark ? "bg-[#0b141a] border-[#5B45FF]" : "bg-white border-[#5B45FF]0"
+      isDark ? "bg-[#0b141a] border-[#5B45FF]" : "bg-white border-[#5B45FF]"
     )}>
       {/* Header: Green Header with White Font */}
       <div className="p-4 flex justify-between items-center bg-[#5B45FF] shadow-md">
@@ -7945,7 +8268,7 @@ function DataCard({ title, data, isDark }: { title: string, data: any, isDark: b
         "flex-1 overflow-auto p-6 font-mono text-[11px] leading-relaxed scrollbar-thin",
         isDark ? "text-white bg-[#0b141a] scrollbar-thumb-[#5B45FF]" : "text-black bg-white scrollbar-thumb-[#5B45FF]"
       )}>
-        <pre className="whitespace-pre-wrap break-all selection:bg-[#5B45FF]0 selection:text-white">
+        <pre className="whitespace-pre-wrap break-all selection:bg-[#5B45FF] selection:text-white">
           {JSON.stringify(data, null, 2)}
         </pre>
       </div>
@@ -7953,7 +8276,7 @@ function DataCard({ title, data, isDark }: { title: string, data: any, isDark: b
       {/* Footer: Visual touch */}
       <div className={cn(
         "px-4 py-2 text-[9px] font-bold uppercase tracking-tighter border-t",
-        isDark ? "bg-[#5B45FF]/10 border-[#5B45FF]/30 text-[#5B45FF]0" : "bg-[#5B45FF] border-[#5B45FF] text-[#5B45FF]"
+        isDark ? "bg-[#5B45FF]/10 border-[#5B45FF]/30 text-[#5B45FF]" : "bg-[#5B45FF] border-[#5B45FF] text-white"
       )}>
         System Log • {new Date().toLocaleTimeString()}
       </div>
@@ -8015,7 +8338,7 @@ function AutomationsSection({ isDark }: { isDark: boolean }) {
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#5B45FF]0">Create Rule</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#5B45FF]">Create Rule</p>
                   <h3 className="mt-2 text-2xl font-black tracking-tight">Automate messages, assignments, and chatbot flows</h3>
                   <p className="mt-2 text-sm text-gray-500">Choose a trigger type below and build the rule flow that should happen next.</p>
                 </div>
@@ -8035,7 +8358,7 @@ function AutomationsSection({ isDark }: { isDark: boolean }) {
                     className={cn(
                       "rounded-2xl border p-4 text-left transition-all",
                       selectedTriggerType === option.key
-                        ? "border-[#5B45FF]0 bg-[#5B45FF]0/10"
+                        ? "border-[#5B45FF] bg-[#5B45FF]/10"
                         : (isDark ? "border-gray-700 bg-gray-800/50 hover:border-gray-600" : "border-gray-200 bg-gray-50 hover:border-gray-300")
                     )}
                   >
@@ -8046,7 +8369,7 @@ function AutomationsSection({ isDark }: { isDark: boolean }) {
               </div>
 
               <div className={cn("mt-6 rounded-[1.75rem] border p-5", isDark ? "border-gray-700 bg-gray-800/40" : "border-gray-200 bg-gray-50")}>
-                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#5B45FF]0">{ruleGroups[selectedTriggerType].title}</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#5B45FF]">{ruleGroups[selectedTriggerType].title}</p>
                 <p className="mt-3 text-sm font-medium text-gray-500">{ruleGroups[selectedTriggerType].subtitle}</p>
 
                 <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -8081,7 +8404,7 @@ function AutomationsSection({ isDark }: { isDark: boolean }) {
                 </button>
                 <button
                   type="button"
-                  className="rounded-2xl bg-[#5B45FF]0 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]0/20 hover:bg-[#5B45FF] transition-all"
+                  className="rounded-2xl bg-[#5B45FF] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]/20 hover:bg-[#5B45FF] transition-all"
                 >
                   Save Rule
                 </button>
@@ -8096,7 +8419,7 @@ function AutomationsSection({ isDark }: { isDark: boolean }) {
           <p className="text-sm font-semibold">Rules</p>
           <p className="text-sm text-gray-400">Create Rules to trigger automated messages, chat assignments, chatbots and more.</p>
         </div>
-        <button onClick={() => setIsCreateRuleOpen(true)} className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[#5B45FF]0 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#5B45FF]0/20 hover:bg-[#5B45FF] transition-all">
+        <button onClick={() => setIsCreateRuleOpen(true)} className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[#5B45FF] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#5B45FF]/20 hover:bg-[#5B45FF] transition-all">
           <Plus size={18} />
           Create Rule
         </button>
@@ -8109,13 +8432,13 @@ function AutomationsSection({ isDark }: { isDark: boolean }) {
               <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500 shrink-0">
                 <Zap className="w-5 h-5 md:w-6 md:h-6" />
               </div>
-              <span className={cn("px-2 py-1 rounded-lg text-[9px] md:text-[10px] font-bold uppercase", auto.status === 'Active' ? "bg-[#5B45FF]0/10 text-[#5B45FF]0" : "bg-yellow-500/10 text-yellow-500")}>
+              <span className={cn("px-2 py-1 rounded-lg text-[9px] md:text-[10px] font-bold uppercase", auto.status === 'Active' ? "bg-[#5B45FF]/10 text-[#5B45FF]" : "bg-yellow-500/10 text-yellow-500")}>
                 {auto.status}
               </span>
             </div>
             <div>
               <h4 className="font-bold text-base md:text-lg">{auto.name}</h4>
-              <p className="text-[10px] md:text-xs uppercase tracking-[0.22em] text-[#5B45FF]0 mt-2">{auto.group}</p>
+              <p className="text-[10px] md:text-xs uppercase tracking-[0.22em] text-[#5B45FF] mt-2">{auto.group}</p>
               <p className="text-xs md:text-sm text-gray-400 mt-1">{auto.trigger}</p>
             </div>
             <div className="pt-4 flex gap-2">
@@ -8260,7 +8583,7 @@ function CallsSection({
   };
 
   const permissionTone = callingProbe?.enabled
-    ? 'text-[#5B45FF]0'
+    ? 'text-[#5B45FF]'
     : callingProbe
       ? 'text-amber-500'
       : (isDark ? 'text-slate-300' : 'text-slate-600');
@@ -8273,7 +8596,7 @@ function CallsSection({
   const latestRouteDiagnostic = callDiagnosticEvents.find((event) => event.kind === 'webhook_route') || null;
   const latestRegistrationDiagnostic = callDiagnosticEvents.find((event) => event.kind === 'socket_registration') || null;
   const socketStateTone = callSocketState === 'connected'
-    ? 'text-[#5B45FF]0'
+    ? 'text-[#5B45FF]'
     : callSocketState === 'reconnecting'
       ? 'text-amber-500'
       : callSocketState === 'error'
@@ -8324,8 +8647,8 @@ function CallsSection({
             className={cn(
               "rounded-[1.35rem] border p-4 text-left transition-all",
               callFilter === option.id
-                ? "border-[#5B45FF]0/40 bg-[#5B45FF]0/10"
-                : (isDark ? "border-gray-800 bg-[#111827] hover:border-[#5B45FF]0/30" : "border-gray-200 bg-white shadow-sm hover:border-[#5B45FF]")
+                ? "border-[#5B45FF]/40 bg-[#5B45FF]/10"
+                : (isDark ? "border-gray-800 bg-[#111827] hover:border-[#5B45FF]/30" : "border-gray-200 bg-white shadow-sm hover:border-[#5B45FF]")
             )}
           >
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">{option.label}</p>
@@ -8356,7 +8679,7 @@ function CallsSection({
                 className={cn(
                   "rounded-full px-3 py-1.5 text-xs font-bold transition-all",
                   callFilter === option.id
-                    ? "bg-[#5B45FF]0 text-white"
+                    ? "bg-[#5B45FF] text-white"
                     : (isDark ? "bg-gray-900 text-slate-300 hover:text-white" : "bg-slate-100 text-slate-600 hover:text-slate-900")
                 )}
               >
@@ -8377,7 +8700,7 @@ function CallsSection({
               const statusTone = call.status === 'missed'
                 ? 'text-rose-500'
                 : call.status === 'ongoing'
-                  ? 'text-[#5B45FF]0'
+                  ? 'text-[#5B45FF]'
                   : call.status === 'failed'
                     ? 'text-amber-500'
                     : (isDark ? 'text-slate-300' : 'text-slate-700');
@@ -8395,7 +8718,7 @@ function CallsSection({
                           call.status === 'missed'
                             ? "bg-rose-500/10 text-rose-500"
                             : call.direction === 'incoming'
-                              ? "bg-[#5B45FF]0/10 text-[#5B45FF]0"
+                              ? "bg-[#5B45FF]/10 text-[#5B45FF]"
                               : "bg-sky-500/10 text-sky-500"
                         )}>
                           <Phone size={16} />
@@ -8433,7 +8756,7 @@ function CallsSection({
                       type="button"
                       onClick={() => void onStartCall(call.contactPhone, call.contactName, 'calls_tab')}
                       disabled={actionDisabled}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-[#5B45FF]0 px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-[#5B45FF] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-2xl bg-[#5B45FF] px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-[#5B45FF] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Phone size={15} />
                       {getCallActionLabel(call.direction)}
@@ -8492,7 +8815,7 @@ function CallsSection({
                   onClick={() => setTargetUserWaId(contact.phone)}
                   className={cn(
                     "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
-                    isDark ? "border-gray-700 bg-gray-900/60 text-slate-200 hover:border-[#5B45FF]0" : "border-slate-200 bg-slate-50 text-slate-600 hover:border-[#5B45FF]"
+                    isDark ? "border-gray-700 bg-gray-900/60 text-slate-200 hover:border-[#5B45FF]" : "border-slate-200 bg-slate-50 text-slate-600 hover:border-[#5B45FF]"
                   )}
                 >
                   <Users size={12} />
@@ -8506,7 +8829,7 @@ function CallsSection({
                 type="button"
                 onClick={() => void dialTarget()}
                 disabled={!normalizedTargetUserWaId || isDialingActiveTarget}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#5B45FF]0 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-[#5B45FF] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#5B45FF] px-4 py-3 text-sm font-bold text-white transition-all hover:bg-[#5B45FF] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Phone size={16} />
                 {isDialingActiveTarget ? 'Call Active' : 'Call Now'}
@@ -8648,10 +8971,10 @@ function CallsSection({
                 </div>
               </div>
               {activeCallSession && (
-                <div className={cn("rounded-[1.2rem] border p-4", isDark ? "border-[#5B45FF]0/20 bg-[#5B45FF]0/10" : "border-[#5B45FF] bg-[#5B45FF]")}>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#5B45FF]0">Live Session</p>
+                <div className={cn("rounded-[1.2rem] border p-4", isDark ? "border-[#5B45FF]/20 bg-[#5B45FF]/10" : "border-[#5B45FF] bg-[#5B45FF] text-white")}>
+                  <p className={cn("text-[10px] font-bold uppercase tracking-[0.18em]", isDark ? "text-[#5B45FF]" : "text-white/75")}>Live Session</p>
                   <p className="mt-2 text-sm font-semibold">{activeCallSession.contactName}</p>
-                  <p className={cn("mt-1 text-[11px] leading-5", isDark ? "text-slate-300" : "text-slate-600")}>
+                  <p className={cn("mt-1 text-[11px] leading-5", isDark ? "text-slate-300" : "text-white/75")}>
                     {activeCallSession.status === 'ringing'
                       ? 'Incoming ring popup is active.'
                       : `Call in progress with ${activeCallSession.participants.length} participant${activeCallSession.participants.length === 1 ? '' : 's'}.`}
@@ -9609,7 +9932,7 @@ function ProfileSection({ isDark }: { isDark: boolean }) {
                 )}
               />
               {primaryPhone?.nameStatus === 'APPROVED' && (
-                <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase bg-[#5B45FF]0/10 text-[#5B45FF]0">
+                <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase bg-[#5B45FF]/10 text-[#5B45FF]">
                   Approved
                 </span>
               )}
@@ -10025,7 +10348,7 @@ function SettingsSection({
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-8">
             <div>
               <div className="flex items-center gap-3">
-                <UserIcon className="text-[#5B45FF]0" />
+                <UserIcon className="text-[#5B45FF]" />
                 <h3 className="text-lg md:text-xl font-bold">WhatsApp Business Account</h3>
               </div>
               <p className={cn("mt-2 text-sm", isDark ? "text-slate-400" : "text-slate-500")}>
@@ -10036,7 +10359,7 @@ function SettingsSection({
               type="button"
               onClick={handleSaveProfile}
               disabled={isSavingProfile}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#5B45FF]0 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]0/20 transition-all hover:bg-[#5B45FF] disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#5B45FF] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]/20 transition-all hover:bg-[#5B45FF] disabled:opacity-50"
             >
               <Save size={16} />
               {isSavingProfile ? 'Saving...' : 'Save Changes'}
@@ -10073,7 +10396,7 @@ function SettingsSection({
                 <input
                   value={profileForm.firstName}
                   onChange={(e) => setProfileForm((prev) => ({ ...prev, firstName: e.target.value }))}
-                  className={cn("w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]0", isDark ? "border-gray-700 bg-gray-800 text-white" : "border-slate-200 bg-slate-50 text-slate-900")}
+                  className={cn("w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]", isDark ? "border-gray-700 bg-gray-800 text-white" : "border-slate-200 bg-slate-50 text-slate-900")}
                 />
               </div>
               <div className="space-y-2">
@@ -10081,7 +10404,7 @@ function SettingsSection({
                 <input
                   value={profileForm.lastName}
                   onChange={(e) => setProfileForm((prev) => ({ ...prev, lastName: e.target.value }))}
-                  className={cn("w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]0", isDark ? "border-gray-700 bg-gray-800 text-white" : "border-slate-200 bg-slate-50 text-slate-900")}
+                  className={cn("w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]", isDark ? "border-gray-700 bg-gray-800 text-white" : "border-slate-200 bg-slate-50 text-slate-900")}
                 />
               </div>
               <div className="space-y-2">
@@ -10090,7 +10413,7 @@ function SettingsSection({
                   type="email"
                   value={profileForm.emailAddress}
                   onChange={(e) => setProfileForm((prev) => ({ ...prev, emailAddress: e.target.value }))}
-                  className={cn("w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]0", isDark ? "border-gray-700 bg-gray-800 text-white" : "border-slate-200 bg-slate-50 text-slate-900")}
+                  className={cn("w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]", isDark ? "border-gray-700 bg-gray-800 text-white" : "border-slate-200 bg-slate-50 text-slate-900")}
                 />
               </div>
               <div className="space-y-2">
@@ -10099,7 +10422,7 @@ function SettingsSection({
                   value={profileForm.contactNumber}
                   onChange={(e) => setProfileForm((prev) => ({ ...prev, contactNumber: e.target.value }))}
                   placeholder="+91 98765 43210"
-                  className={cn("w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]0", isDark ? "border-gray-700 bg-gray-800 text-white" : "border-slate-200 bg-slate-50 text-slate-900")}
+                  className={cn("w-full rounded-2xl border px-4 py-4 text-sm outline-none transition-all focus:border-[#5B45FF]", isDark ? "border-gray-700 bg-gray-800 text-white" : "border-slate-200 bg-slate-50 text-slate-900")}
                 />
               </div>
             </div>
@@ -10122,7 +10445,7 @@ function SettingsSection({
                 className={cn(
                   "rounded-2xl border p-4 text-left transition-all",
                   !isDarkMode
-                    ? "border-[#5B45FF]0 bg-[#5B45FF]0/10"
+                    ? "border-[#5B45FF] bg-[#5B45FF]/10"
                     : (isDark ? "border-gray-700 hover:border-gray-600" : "border-gray-200 hover:border-gray-300")
                 )}
               >
@@ -10138,7 +10461,7 @@ function SettingsSection({
                 className={cn(
                   "rounded-2xl border p-4 text-left transition-all",
                   isDarkMode
-                    ? "border-[#5B45FF]0 bg-[#5B45FF]0/10"
+                    ? "border-[#5B45FF] bg-[#5B45FF]/10"
                     : (isDark ? "border-gray-700 hover:border-gray-600" : "border-gray-200 hover:border-gray-300")
                 )}
               >
@@ -10156,7 +10479,7 @@ function SettingsSection({
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="flex items-center gap-3">
-                <BellRing className="text-[#5B45FF]0" />
+                <BellRing className="text-[#5B45FF]" />
                 <h3 className="text-lg md:text-xl font-bold">Notifications</h3>
               </div>
               <p className={cn("mt-2 text-sm", isDark ? "text-slate-400" : "text-slate-500")}>
@@ -10167,7 +10490,7 @@ function SettingsSection({
               type="button"
               onClick={handleSaveNotifications}
               disabled={isSavingNotifications}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#5B45FF]0 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]0/20 transition-all hover:bg-[#5B45FF] disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#5B45FF] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]/20 transition-all hover:bg-[#5B45FF] disabled:opacity-50"
             >
               <Save size={16} />
               {isSavingNotifications ? 'Saving...' : 'Save Notification Settings'}
@@ -10212,7 +10535,7 @@ function SettingsSection({
                     className={cn(
                       "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-all",
                       notificationForm[item.key as keyof NotificationSettings]
-                        ? "bg-[#5B45FF]0"
+                        ? "bg-[#5B45FF]"
                         : (isDark ? "bg-gray-700" : "bg-slate-300")
                     )}
                   >
@@ -10253,8 +10576,8 @@ function PhoneNumbersSection({ isDark, phoneNumbers, businessAccounts }: { isDar
             <div key={pn.phoneId || idx} className={cn("p-6 rounded-2xl md:rounded-3xl border", isDark ? "bg-[#111827] border-gray-800" : "bg-white border-gray-200 shadow-sm")}>
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-[#5B45FF]0/10 flex items-center justify-center shrink-0">
-                    <Phone className="text-[#5B45FF]0 w-5 h-5 md:w-6 md:h-6" />
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-[#5B45FF]/10 flex items-center justify-center shrink-0">
+                    <Phone className="text-[#5B45FF] w-5 h-5 md:w-6 md:h-6" />
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-lg md:text-xl font-bold truncate">{pn.displayPhoneNumber}</h3>
@@ -10263,12 +10586,12 @@ function PhoneNumbersSection({ isDark, phoneNumbers, businessAccounts }: { isDar
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <span className={cn("px-2 py-0.5 md:px-3 md:py-1 rounded-full text-[10px] md:text-xs font-bold uppercase", 
-                    pn.status === 'CONNECTED' ? "bg-[#5B45FF]0/10 text-[#5B45FF]0" : "bg-red-500/10 text-red-500"
+                    pn.status === 'CONNECTED' ? "bg-[#5B45FF]/10 text-[#5B45FF]" : "bg-red-500/10 text-red-500"
                   )}>
                     {pn.status || 'UNKNOWN'}
                   </span>
                   <span className={cn("px-2 py-0.5 md:px-3 md:py-1 rounded-full text-[10px] md:text-xs font-bold uppercase", 
-                    pn.qualityRating === 'GREEN' ? "bg-[#5B45FF]0/10 text-[#5B45FF]0" : 
+                    pn.qualityRating === 'GREEN' ? "bg-[#5B45FF]/10 text-[#5B45FF]" : 
                     pn.qualityRating === 'YELLOW' ? "bg-yellow-500/10 text-yellow-500" : 
                     pn.qualityRating === 'RED' ? "bg-red-500/10 text-red-500" : "bg-gray-500/10 text-gray-500"
                   )}>
@@ -10346,18 +10669,18 @@ function NavItem({ icon, label, active, onClick, isDark, collapsed = false }: { 
       onClick={onClick}
       title={collapsed ? label : undefined}
       className={cn(
-        "group flex items-center gap-3 w-full p-3 rounded-2xl transition-all font-medium border",
+        "group flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all font-medium border",
         collapsed && "md:justify-center",
         active 
-          ? "border-[#5B45FF] bg-[#5B45FF] text-white shadow-[0_12px_30px_rgba(91,69,255,0.18)]"
-          : (isDark ? "border-transparent text-gray-400 hover:border-[#5B45FF]/10 hover:bg-[#5B45FF]/8 hover:text-white" : "border-transparent text-slate-600 hover:border-[#5B45FF]/20 hover:bg-[#5B45FF]/8 hover:text-slate-900")
+          ? "border-[#5B45FF]/20 bg-[#5B45FF] text-white shadow-[0_10px_24px_rgba(91,69,255,0.18)]"
+          : (isDark ? "border-transparent text-slate-400 hover:border-white/8 hover:bg-white/6 hover:text-white" : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-100/80 hover:text-slate-950")
       )}
     >
       <span className={cn(
-        "flex h-10 w-10 items-center justify-center rounded-2xl transition-all",
+        "flex h-9 w-9 items-center justify-center rounded-xl transition-all",
         active
           ? "bg-white/15 text-white"
-          : (isDark ? "bg-[#5B45FF]/10 text-[#5B45FF] group-hover:bg-[#5B45FF] group-hover:text-white" : "bg-[#5B45FF]/10 text-[#5B45FF] group-hover:bg-[#5B45FF] group-hover:text-white")
+          : (isDark ? "bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-white" : "bg-white text-slate-500 shadow-sm group-hover:text-[#5B45FF]")
       )}>
         {icon}
       </span>
@@ -10369,17 +10692,17 @@ function NavItem({ icon, label, active, onClick, isDark, collapsed = false }: { 
 function StatCard({ label, value, icon, trend, isDark }: { label: string, value: string, icon: React.ReactNode, trend?: string, isDark: boolean }) {
   return (
     <div className={cn(
-      "p-4 md:p-6 rounded-2xl md:rounded-3xl border transition-all hover:-translate-y-1",
-      isDark ? "bg-slate-900 border-gray-800 shadow-[0_22px_55px_rgba(2,8,23,0.28)]" : "bg-white border-slate-200 shadow-[0_18px_50px_rgba(15,23,42,0.08)]"
+      "p-4 md:p-5 rounded-2xl border transition-all hover:-translate-y-0.5",
+      isDark ? "bg-slate-900/88 border-white/8 shadow-[0_18px_44px_rgba(2,8,23,0.22)]" : "bg-white/90 border-slate-200/80 shadow-[0_16px_38px_rgba(15,23,42,0.06)]"
     )}>
-      <div className="flex justify-between items-start mb-3 md:mb-4">
-        <div className={cn("w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center", isDark ? "bg-gray-800" : "bg-gray-50")}>
+      <div className="flex justify-between items-start mb-3">
+        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", isDark ? "bg-white/6 text-slate-300" : "bg-slate-100 text-slate-600")}>
           {icon}
         </div>
-        {trend && <span className="text-[10px] md:text-xs font-bold text-[#5B45FF]0 bg-[#5B45FF]0/10 px-2 py-1 rounded-lg">{trend}</span>}
+        {trend && <span className="text-[10px] md:text-xs font-bold text-[#5B45FF] bg-[#5B45FF]/10 px-2 py-1 rounded-lg">{trend}</span>}
       </div>
-      <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider">{label}</p>
-      <h4 className="text-lg md:text-3xl font-bold mt-1">{value}</h4>
+      <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-[0.18em]">{label}</p>
+      <h4 className="text-xl md:text-2xl font-extrabold mt-1">{value}</h4>
     </div>
   );
 }
@@ -10393,7 +10716,7 @@ function HealthItem({ label, value, status, isDark }: { label: string, value: st
       </div>
       <span className={cn(
         "px-2 py-0.5 md:px-3 md:py-1 rounded-full text-[9px] md:text-[10px] font-bold uppercase shrink-0",
-        status === 'success' ? "bg-[#5B45FF]0/10 text-[#5B45FF]0" : "bg-blue-500/10 text-blue-500"
+        status === 'success' ? "bg-[#5B45FF]/10 text-[#5B45FF]" : "bg-blue-500/10 text-blue-500"
       )}>
         {value}
       </span>

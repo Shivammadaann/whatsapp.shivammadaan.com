@@ -67,49 +67,54 @@ export default function Auth() {
   };
 
   return (
-    <div className="page-frame app-safe-screen grid overflow-hidden bg-white text-black [zoom:0.9] lg:grid-cols-[57%_43%]">
-      <section className="relative hidden min-h-screen overflow-hidden border-r border-[#dadde1] px-12 py-14 lg:flex lg:flex-col">
-        <img src="/waba.svg" alt="WhatsApp Business" className="h-20 w-20 object-contain" />
+    <div className="page-frame app-safe-screen grid overflow-hidden bg-[#f7f8fb] text-slate-950 lg:grid-cols-[56%_44%]">
+      <section className="relative hidden min-h-screen overflow-hidden border-r border-slate-200/80 bg-white lg:flex">
+        <div className="relative flex min-h-screen w-full origin-center scale-75 flex-col px-14 py-12">
+          <img src="/waba.svg" alt="WhatsApp Business" className="h-16 w-16 object-contain" />
 
-        <div className="pointer-events-none absolute right-8 top-14 h-[42rem] w-[38rem] max-w-[48vw] xl:right-14 xl:h-[45rem] xl:w-[42rem]">
-          <img src={AUTH_HERO_IMAGE} alt="" className="h-full w-full object-contain" />
-        </div>
+          <div className="pointer-events-none absolute right-8 top-14 h-[42rem] w-[38rem] max-w-[48vw] xl:right-14 xl:h-[45rem] xl:w-[42rem]">
+            <img src={AUTH_HERO_IMAGE} alt="" className="h-full w-full object-contain" />
+          </div>
 
-        <div className="relative z-10 mt-auto max-w-[23rem] pb-20 xl:max-w-[26rem]">
-          <h1 className="[font-family:var(--font-body)] text-[4.1rem] font-black leading-[1.05] tracking-normal text-[#0b0b0f] xl:text-[4.8rem]">
-            Do more
-            <br />
-            with
-            <br />
-            <span className="text-[#0866ff]">Conversations.</span>
-          </h1>
+          <div className="relative z-10 mt-auto max-w-[25rem] pb-20 xl:max-w-[29rem]">
+            <h1 className="[font-family:var(--font-body)] text-[3.6rem] font-black leading-[1.04] tracking-tight text-slate-950 xl:text-[4.35rem]">
+              Do more
+              <br />
+              with
+              <br />
+              <span className="text-[#5B45FF]">Conversations.</span>
+            </h1>
+            <p className="mt-6 max-w-sm text-base font-medium leading-7 text-slate-500">
+              Manage chats, calls, broadcasts, templates, and contacts from one focused workspace.
+            </p>
+          </div>
         </div>
       </section>
 
       <section className="flex min-h-screen flex-col">
-        <header className="flex h-[10.25rem] shrink-0 items-center justify-center border-b border-[#dadde1] lg:hidden">
-          <img src="/waba.svg" alt="WhatsApp Business" className="h-20 w-20 object-contain" />
+        <header className="flex h-28 shrink-0 items-center justify-center border-b border-slate-200 bg-white lg:hidden">
+          <img src="/waba.svg" alt="WhatsApp Business" className="h-16 w-16 object-contain" />
         </header>
 
         <motion.main
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="mx-auto flex w-full max-w-[42.75rem] flex-1 flex-col px-6 pb-10 pt-16 sm:px-0 lg:justify-center lg:pt-0"
+          className="mx-auto flex w-full max-w-[34rem] flex-1 flex-col px-6 pb-10 pt-12 sm:px-8 lg:justify-center lg:pt-0"
         >
           <div className="mb-10 block lg:hidden">
-            <h2 className="[font-family:var(--font-body)] text-5xl font-black leading-tight tracking-normal text-[#0b0b0f]">
-              Do more with <span className="text-[#0866ff]">Conversations.</span>
+            <h2 className="[font-family:var(--font-body)] text-4xl font-black leading-tight tracking-tight text-slate-950">
+              Do more with <span className="text-[#5B45FF]">Conversations.</span>
             </h2>
           </div>
 
-          <div className="flex min-h-[41rem] flex-col lg:min-h-[34rem]">
+          <div className="flex min-h-[34rem] flex-col rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.08)] sm:p-8">
             <div>
-              <h1 className="[font-family:var(--font-body)] text-2xl font-bold tracking-normal text-black">
-                {isLogin ? 'Log in to Facebook' : 'Create new account'}
+              <h1 className="[font-family:var(--font-body)] text-2xl font-extrabold tracking-tight text-slate-950">
+                {isLogin ? 'Log in to your workspace' : 'Create your workspace'}
               </h1>
               {inviteWorkspaceName && (
-                <div className="mt-6 rounded-2xl border border-[#0866ff]/20 bg-[#f0f5ff] px-5 py-4 text-[15px] font-medium text-[#0866ff]">
+                <div className="mt-6 rounded-2xl border border-[#5B45FF]/20 bg-[#5B45FF]/8 px-5 py-4 text-sm font-medium text-[#4338ca]">
                   You have been invited to join <span className="font-bold">{inviteWorkspaceName}</span> on WhatsApp Business.
                 </div>
               )}
@@ -129,7 +134,7 @@ export default function Auth() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Full name"
-                      className="h-[4.75rem] w-full rounded-[1.15rem] border border-[#ccd0d5] bg-white px-5 text-[1.25rem] font-medium text-black outline-none placeholder:text-[#606770] focus:border-black focus:ring-0"
+                      className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-400 focus:border-[#5B45FF] focus:bg-white focus:ring-4 focus:ring-[#5B45FF]/10"
                     />
                   </motion.div>
                 )}
@@ -141,7 +146,7 @@ export default function Auth() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email address or mobile number"
-                className="h-[4.75rem] w-full rounded-[1.15rem] border border-[#ccd0d5] bg-white px-5 text-[1.25rem] font-medium text-black outline-none placeholder:text-[#606770] focus:border-black focus:ring-0"
+                className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-400 focus:border-[#5B45FF] focus:bg-white focus:ring-4 focus:ring-[#5B45FF]/10"
               />
 
               <input
@@ -150,7 +155,7 @@ export default function Auth() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
-                className="h-[4.75rem] w-full rounded-[1.15rem] border border-[#ccd0d5] bg-white px-5 text-[1.25rem] font-medium text-black outline-none placeholder:text-[#606770] focus:border-[#ccd0d5] focus:ring-0"
+                className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-400 focus:border-[#5B45FF] focus:bg-white focus:ring-4 focus:ring-[#5B45FF]/10"
               />
 
               {error && (
@@ -162,7 +167,7 @@ export default function Auth() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex h-[3.4rem] w-full items-center justify-center rounded-[1.7rem] bg-[#0866ff] text-lg font-bold text-white transition-colors hover:bg-[#075ce5] disabled:opacity-50"
+                className="flex h-12 w-full items-center justify-center rounded-2xl bg-[#5B45FF] text-sm font-bold text-white shadow-lg shadow-[#5B45FF]/20 transition-colors hover:bg-[#4b38df] disabled:opacity-50"
               >
                 {loading ? (
                   <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -175,7 +180,7 @@ export default function Auth() {
             {isLogin && (
               <button
                 type="button"
-                className="mt-7 w-full text-center text-[1.2rem] font-semibold text-black"
+                className="mt-6 w-full text-center text-sm font-semibold text-slate-600 hover:text-slate-950"
               >
                 Forgotten password?
               </button>
@@ -184,13 +189,13 @@ export default function Auth() {
             <button
               type="button"
               onClick={() => setIsLogin(!isLogin)}
-              className="mt-auto flex h-[3.4rem] w-full items-center justify-center rounded-[1.7rem] border border-[#0866ff] bg-white text-lg font-semibold text-[#0064ff] transition-colors hover:bg-[#f5f8ff]"
+              className="mt-auto flex h-12 w-full items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm font-bold text-[#5B45FF] transition-colors hover:bg-[#5B45FF]/6"
             >
               {isLogin ? 'Create new account' : 'Log in to existing account'}
             </button>
 
-            <div className="mt-8 flex items-center justify-center gap-1 text-xl font-semibold text-[#1c1e21]">
-              <span className="[font-family:var(--font-body)] text-[1.35rem] font-black leading-none text-[#0866ff]">&infin;</span>
+            <div className="mt-8 flex items-center justify-center gap-1 text-base font-semibold text-slate-500">
+              <span className="[font-family:var(--font-body)] text-lg font-black leading-none text-[#5B45FF]">&infin;</span>
               <span>Meta</span>
             </div>
           </div>

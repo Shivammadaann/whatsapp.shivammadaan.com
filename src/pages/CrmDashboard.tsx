@@ -1980,7 +1980,7 @@ export default function CrmDashboard() {
                 <div className={cn(
                   "mt-5 rounded-[1.3rem] border px-4 py-3 text-sm font-medium",
                   leadNotice.tone === 'success'
-                    ? "border-[#5B45FF] bg-[#5B45FF] text-[#5B45FF]"
+                    ? "border-[#5B45FF] bg-[#5B45FF] text-white"
                     : "border-rose-200 bg-rose-50 text-rose-700"
                 )}>
                   {leadNotice.text}
@@ -2185,7 +2185,7 @@ export default function CrmDashboard() {
                   </div>
                   <span className={cn(
                     "rounded-full px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em]",
-                    metaLeadCaptureConfigured ? "bg-[#5B45FF] text-[#5B45FF]" : "bg-[#DBEAFE] text-[#1D4ED8]"
+                    metaLeadCaptureConfigured ? "bg-[#5B45FF] text-white" : "bg-[#DBEAFE] text-[#1D4ED8]"
                   )}>
                     {metaSetupStatusLabel}
                   </span>

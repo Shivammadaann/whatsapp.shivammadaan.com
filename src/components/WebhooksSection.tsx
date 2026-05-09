@@ -181,7 +181,7 @@ export function WebhooksSection({ isDark, currentUserProfile }: { isDark: boolea
               </button>
             </div>
             {saveSuccess && (
-              <p className="text-[#5B45FF]0 text-sm mt-2 flex items-center gap-1">
+              <p className="text-[#5B45FF] text-sm mt-2 flex items-center gap-1">
                 <CheckCircle2 size={14} /> Webhook URL saved successfully
               </p>
             )}
@@ -206,7 +206,7 @@ export function WebhooksSection({ isDark, currentUserProfile }: { isDark: boolea
               <div className={cn(
                 "mt-4 p-4 rounded-lg flex items-start gap-3",
                 testResult.success 
-                  ? (isDark ? "bg-[#5B45FF]0/10 text-[#5B45FF] border border-[#5B45FF]0/20" : "bg-[#5B45FF] text-[#5B45FF] border border-[#5B45FF]")
+                  ? (isDark ? "bg-[#5B45FF]/10 text-[#5B45FF] border border-[#5B45FF]/20" : "bg-[#5B45FF] text-white border border-[#5B45FF]")
                   : (isDark ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-red-50 text-red-700 border border-red-200")
               )}>
                 {testResult.success ? <CheckCircle2 className="shrink-0 mt-0.5" size={18} /> : <AlertCircle className="shrink-0 mt-0.5" size={18} />}

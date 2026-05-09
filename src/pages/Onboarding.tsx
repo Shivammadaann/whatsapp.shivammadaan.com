@@ -113,20 +113,20 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="page-frame app-mesh-light app-safe-screen flex items-center justify-center overflow-hidden px-4 py-4 sm:px-6 sm:py-6 text-slate-900">
+    <div className="page-frame app-mesh-light app-safe-screen flex items-center justify-center overflow-hidden px-4 py-6 sm:px-6 sm:py-8 text-slate-900">
       <motion.div
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="form-shell w-full rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-[0_28px_80px_rgba(91,69,255,0.1)] sm:p-6 xl:p-8"
+        className="form-shell w-full rounded-[1.5rem] border border-slate-200/80 bg-white/92 p-5 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-7 xl:p-9"
       >
-        <div className="grid gap-5 xl:gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-start">
+        <div className="grid gap-7 xl:gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)] lg:items-start">
           <div>
             <Logo />
 
-            <div className="mt-5 rounded-[1.6rem] border border-slate-100 bg-white p-5">
+            <div className="mt-6 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-5">
               <div className="flex items-start gap-4">
-                <label className="relative flex h-24 w-24 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-slate-200 bg-white shadow-sm">
+                <label className="relative flex h-20 w-20 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-white shadow-sm">
                   {profilePicture ? (
                     <img src={profilePicture} alt="Profile" className="h-full w-full object-cover" />
                   ) : (
@@ -136,8 +136,8 @@ export default function Onboarding() {
                 </label>
 
                 <div className="min-w-0">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.26em] text-[#5B45FF]">Welcome</p>
-                  <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#5B45FF]">Welcome</p>
+                  <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 md:text-3xl">
                     Welcome, {firstName || currentUser?.displayName || 'there'}
                   </h1>
                   <p className="mt-2 text-[13px] font-medium leading-6 text-slate-500">
@@ -148,14 +148,14 @@ export default function Onboarding() {
               </div>
             </div>
 
-            <div className="mt-5 rounded-[1.6rem] border border-slate-100 bg-white p-5">
+            <div className="mt-4 rounded-2xl border border-slate-200/70 bg-white p-5">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-[#5B45FF]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#5B45FF]/10 text-[#5B45FF]">
                   <ShieldCheck size={18} />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-slate-900">Account creation step</p>
-                  <p className="mt-1 text-[13px] leading-6 text-slate-500">
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
                     We are collecting just the essentials so your WhatsApp Business account is ready right after first sign up.
                   </p>
                 </div>
@@ -167,7 +167,7 @@ export default function Onboarding() {
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">First Name</label>
+                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">First Name</label>
                   <div className="relative">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input
@@ -175,13 +175,13 @@ export default function Onboarding() {
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       placeholder="First name"
-                      className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-12 pr-4 text-[13px] text-slate-900 outline-none focus:border-[#5B45FF] focus:ring-2 focus:ring-[#5B45FF]/15"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3.5 pl-12 pr-4 text-sm text-slate-900 outline-none focus:border-[#5B45FF] focus:bg-white focus:ring-4 focus:ring-[#5B45FF]/10"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Last Name</label>
+                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Last Name</label>
                   <div className="relative">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input
@@ -189,27 +189,27 @@ export default function Onboarding() {
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                       placeholder="Last name"
-                      className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-12 pr-4 text-[13px] text-slate-900 outline-none focus:border-[#5B45FF] focus:ring-2 focus:ring-[#5B45FF]/15"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3.5 pl-12 pr-4 text-sm text-slate-900 outline-none focus:border-[#5B45FF] focus:bg-white focus:ring-4 focus:ring-[#5B45FF]/10"
                     />
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Email Address</label>
+                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Email Address</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input
                     type="email"
                     value={currentUser?.email || ''}
                     disabled
-                    className="w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-50 py-3.5 pl-12 pr-4 text-[13px] text-slate-500 outline-none"
+                    className="w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-100 py-3.5 pl-12 pr-4 text-sm text-slate-500 outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Mobile Number</label>
+                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Mobile Number</label>
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input
@@ -217,12 +217,12 @@ export default function Onboarding() {
                     value={mobileNumber}
                     onChange={(e) => setMobileNumber(e.target.value)}
                     placeholder="+91 98765 43210"
-                    className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-12 pr-4 text-[13px] text-slate-900 outline-none focus:border-[#5B45FF] focus:ring-2 focus:ring-[#5B45FF]/15"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3.5 pl-12 pr-4 text-sm text-slate-900 outline-none focus:border-[#5B45FF] focus:bg-white focus:ring-4 focus:ring-[#5B45FF]/10"
                   />
                 </div>
               </div>
 
-              <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4">
+              <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4">
                 <input
                   type="checkbox"
                   checked={consentChecked}

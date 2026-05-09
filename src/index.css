@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Inter:wght@400;500;600;700;800;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
 @import "tailwindcss";
 
 @theme {
@@ -8,17 +8,17 @@
 @layer base {
   :root {
     --connektly-brand: #5B45FF;
-    --connektly-brand-deep: #000000;
-    --connektly-brand-soft: rgba(91, 69, 255, 0.1);
+    --connektly-brand-deep: #241874;
+    --connektly-brand-soft: rgba(91, 69, 255, 0.08);
     --connektly-connect: #5B45FF;
     --connektly-ink: #000000;
-    --font-heading: "Comic Neue", "Comic Sans MS", cursive;
+    --font-heading: "Inter", ui-sans-serif, system-ui, sans-serif;
     --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
-    --app-gutter: clamp(1rem, 0.75rem + 0.9vw, 1.75rem);
-    --app-gutter-lg: clamp(1.25rem, 0.9rem + 1.6vw, 2.5rem);
-    --app-shell-max: 90rem;
+    --app-gutter: clamp(1.1rem, 0.8rem + 1.2vw, 2.15rem);
+    --app-gutter-lg: clamp(1.5rem, 1rem + 1.9vw, 3rem);
+    --app-shell-max: 94rem;
     --app-form-max: 72rem;
-    --app-sidebar-width: clamp(16.5rem, 15.2rem + 2vw, 18.5rem);
+    --app-sidebar-width: clamp(15.75rem, 14.8rem + 1.8vw, 17.75rem);
   }
 
   html {
@@ -34,8 +34,8 @@
 
   body {
     min-height: 100vh;
-    background: #FFFFFF;
-    color: #000000;
+    background: #f7f8fb;
+    color: #111827;
     font-family: var(--font-body);
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -70,7 +70,7 @@
   .font-extrabold,
   .font-bold.uppercase {
     font-family: var(--font-heading);
-    letter-spacing: -0.03em;
+    letter-spacing: -0.018em;
   }
 
   ::selection {
@@ -202,7 +202,7 @@
     width: min(100%, calc(var(--app-shell-max) + (var(--app-gutter) * 2)));
     margin-inline: auto;
     padding-inline: var(--app-gutter);
-    padding-block: clamp(1rem, 0.75rem + 1vw, 2rem);
+    padding-block: clamp(1.2rem, 0.9rem + 1.1vw, 2.25rem);
   }
 
   .form-shell {
@@ -219,7 +219,7 @@
   }
 
   .connect-content-pad {
-    padding: clamp(1rem, 0.8rem + 1vw, 1.75rem);
+    padding: clamp(1.1rem, 0.85rem + 1.1vw, 2.1rem);
   }
 
   .connect-inbox-frame {
@@ -288,11 +288,15 @@
   }
 
   .app-mesh-light {
-    background: #FFFFFF;
+    background:
+      radial-gradient(circle at top left, rgba(91, 69, 255, 0.08), transparent 28rem),
+      linear-gradient(180deg, #ffffff 0%, #f6f8fb 52%, #eef2f7 100%);
   }
 
   .app-mesh-dark {
-    background: #000000;
+    background:
+      radial-gradient(circle at top left, rgba(91, 69, 255, 0.18), transparent 30rem),
+      linear-gradient(180deg, #070b12 0%, #0b1220 54%, #080d16 100%);
   }
 
   .chat-canvas-light {
@@ -316,11 +320,12 @@
   }
 
   .app-header-card {
-    background: #5B45FF;
-    color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 1.75rem;
-    box-shadow: 0 24px 70px rgba(91, 69, 255, 0.24);
+    background: rgba(255, 255, 255, 0.88);
+    color: #111827;
+    border: 1px solid rgba(226, 232, 240, 0.86);
+    border-radius: 1.25rem;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(18px);
   }
 
   .app-header-compact {
@@ -328,44 +333,44 @@
   }
 
   .app-header-title {
-    color: #ffffff;
-    font-size: clamp(1.4rem, 1.15rem + 1vw, 1.85rem);
-    line-height: 1.08;
+    color: #111827;
+    font-size: clamp(1.2rem, 1.02rem + 0.7vw, 1.6rem);
+    line-height: 1.16;
   }
 
   .app-header-copy {
-    color: rgba(255, 255, 255, 0.86);
+    color: #64748b;
   }
 
   .app-header-eyebrow {
-    color: rgba(255, 255, 255, 0.82);
+    color: #6d5cf6;
   }
 
   .app-header-chip {
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    background: rgba(255, 255, 255, 0.12);
-    color: #ffffff;
+    border: 1px solid rgba(91, 69, 255, 0.12);
+    background: rgba(91, 69, 255, 0.06);
+    color: #4338ca;
   }
 
   .app-header-action {
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    background: #ffffff;
-    color: #5B45FF;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(91, 69, 255, 0.18);
+    background: #5B45FF;
+    color: #ffffff;
+    box-shadow: 0 12px 26px rgba(91, 69, 255, 0.18);
   }
 
   .app-header-action:hover {
-    background: rgba(255, 255, 255, 0.92);
+    background: #4b38df;
   }
 
   .app-header-action-secondary {
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    background: rgba(255, 255, 255, 0.12);
-    color: #ffffff;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background: rgba(248, 250, 252, 0.88);
+    color: #334155;
   }
 
   .app-header-action-secondary:hover {
-    background: rgba(255, 255, 255, 0.18);
+    background: #eef2ff;
   }
 
   @media (min-width: 768px) {

@@ -20,7 +20,7 @@ export const Logo: React.FC<LogoProps> = ({
       style={{ width: size, height: size }}
       className={variant === 'compact'
         ? "overflow-hidden rounded-xl shadow-sm"
-        : "overflow-hidden rounded-2xl shadow-lg shadow-[#5B45FF]/20"
+        : "overflow-hidden rounded-xl shadow-sm ring-1 ring-slate-200/70"
       }
     >
       <img
