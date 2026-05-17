@@ -1541,12 +1541,19 @@ console.log(`${API_URL}/meta/webhook`);
       let firestoreUsers: any[] = [];
 
       try {
-        const usersSnapshot = await db.collection("users")
+        const legacyUsersSnapshot = await db.collection("users")
           .where("whatsappCredentials.phoneNumberId", "==", targetPhoneNumberId)
           .limit(10)
           .get();
+        const multiAccountUsersSnapshot = await db.collection("users")
+          .where("whatsappPhoneNumberIds", "array-contains", targetPhoneNumberId)
+          .limit(10)
+          .get();
 
-        firestoreUsers = usersSnapshot.docs;
+        const userDocMap = new Map<string, any>();
+        legacyUsersSnapshot.docs.forEach((userDoc) => userDocMap.set(userDoc.id, userDoc));
+        multiAccountUsersSnapshot.docs.forEach((userDoc) => userDocMap.set(userDoc.id, userDoc));
+        firestoreUsers = Array.from(userDocMap.values());
         firestoreUsers.forEach((userDoc) => routedUserIds.add(userDoc.id));
       } catch (err) {
         console.error("Error looking up inbound WhatsApp route in Firestore:", err);
@@ -1955,7 +1962,7 @@ console.log(`${API_URL}/meta/webhook`);
       res.setHeader("Content-Type", contentType);
       res.setHeader("Cache-Control", "private, max-age=300");
       if (contentLength) {
-        res.setHeader("Content-Length", contentLength);
+        res.setHeader("Content-Length", String(contentLength));
       }
 
       mediaResponse.data.pipe(res);

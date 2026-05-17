@@ -37,6 +37,7 @@ function WabaIcon({ size = 16 }: { size?: number }) {
   return <img src="/waba.svg" alt="" width={size} height={size} className="object-contain" />;
 }
 import { whatsappService } from '../services/whatsappService';
+import { getActiveWhatsAppAccount } from '../lib/whatsappAccounts';
 import { Logo } from '../components/Logo';
 
 type TeamSize = 'solo' | 'small' | 'growing';
@@ -629,22 +630,23 @@ export default function CrmDashboard() {
   }, [hasHydratedForm, user]);
 
   useEffect(() => {
-    const credentials = profileData?.whatsappCredentials;
+    const credentials = getActiveWhatsAppAccount(profileData);
     if (credentials?.accessToken && credentials?.phoneNumberId) {
       whatsappService.setCredentials(
         credentials.accessToken,
         credentials.phoneNumberId,
-        credentials.businessAccountId || credentials.wabaId || ''
+        credentials.businessAccountId || ''
       );
       return;
     }
 
     whatsappService.clearCredentials();
   }, [
+    profileData?.activeWhatsappAccountId,
+    profileData?.whatsappAccounts,
     profileData?.whatsappCredentials?.accessToken,
     profileData?.whatsappCredentials?.phoneNumberId,
-    profileData?.whatsappCredentials?.businessAccountId,
-    profileData?.whatsappCredentials?.wabaId
+    profileData?.whatsappCredentials?.businessAccountId
   ]);
 
   useEffect(() => {

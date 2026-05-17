@@ -1,6 +1,14 @@
 @import url("https://fonts.googleapis.com/css2?family=Cause:wght@100..900&family=Comic+Relief:wght@400;700&display=swap");
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Optimistic 95";
+  src: local("Optimistic 95"), local("Optimistic Text"), local("Optimistic");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   --ease-fluid: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -14,7 +22,7 @@
     --connektly-ink: #000000;
     --font-h1: "Cause", ui-sans-serif, system-ui, sans-serif;
     --font-heading: "Inter", ui-sans-serif, system-ui, sans-serif;
-    --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-body: "Optimistic 95", "Optimistic Text", "Optimistic", ui-sans-serif, system-ui, sans-serif;
     --app-gutter: clamp(1.1rem, 0.8rem + 1.2vw, 2.15rem);
     --app-gutter-lg: clamp(1.5rem, 1rem + 1.9vw, 3rem);
     --app-shell-max: 94rem;
@@ -285,6 +293,10 @@
 
   .connect-content-pad {
     padding: clamp(1.1rem, 0.85rem + 1.1vw, 2.1rem);
+  }
+
+  .connect-content-pad-inbox {
+    padding-top: clamp(0.75rem, 0.55rem + 0.8vw, 1.35rem);
   }
 
   .connect-inbox-frame {

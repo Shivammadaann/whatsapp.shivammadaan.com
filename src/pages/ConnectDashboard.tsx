@@ -40,7 +40,6 @@ import {
   Edit3,
   RefreshCw,
   SlidersHorizontal,
-  Database as DatabaseIcon,
   Activity,
   Save,
   Phone,
@@ -60,7 +59,6 @@ import {
   Megaphone,
   LayoutTemplate,
   ContactRound,
-  Workflow,
   Building2,
   RadioTower,
   Settings2,
@@ -93,6 +91,14 @@ import { WebhooksSection } from '../components/WebhooksSection';
 import { Logo } from '../components/Logo';
 import { buildBackendUrl, buildBackendWsUrl } from '../lib/backend';
 import { cn } from '../lib/utils';
+import {
+  getActiveWhatsAppAccount,
+  getWhatsAppAccounts,
+  getWhatsAppPhoneNumberIds,
+  normalizeWhatsAppAccount,
+  toLegacyWhatsAppCredentials,
+  upsertWhatsAppAccount
+} from '../lib/whatsappAccounts';
 import whatsappCallsLogo from '../../WhatsApp Call Logo.avif';
 import defaultConversationProfile from '../../Default Profile.png';
 
@@ -126,7 +132,7 @@ function WhatsAppCallsIcon({ size = 18 }: { size?: number }) {
   return <BrandImageIcon src={whatsappCallsLogo} alt="WhatsApp Calls" size={size} />;
 }
 
-type TabType = 'inbox' | 'calls' | 'broadcast' | 'templates' | 'contacts' | 'automations' | 'profile' | 'channel_status' | 'settings';
+type TabType = 'inbox' | 'calls' | 'broadcast' | 'templates' | 'contacts' | 'profile' | 'channel_status' | 'settings';
 type CallDirection = 'incoming' | 'outgoing';
 type CallStatus = 'ringing' | 'missed' | 'ongoing' | 'ended' | 'failed';
 type CallFilter = 'all' | 'missed' | 'incoming' | 'outgoing';
@@ -1101,7 +1107,7 @@ export default function ConnectDashboard() {
 
   useEffect(() => {
     registerSocketSession();
-  }, [currentUserId, phoneNumbers, currentUserProfile?.whatsappCredentials?.phoneNumberId]);
+  }, [currentUserId, phoneNumbers, currentUserProfile?.activeWhatsappAccountId, currentUserProfile?.whatsappCredentials?.phoneNumberId]);
 
   const syncLiveCallRecord = async (callRecord: CallLogRecord) => {
     const currentActiveCallSession = activeCallSessionRef.current;
@@ -1657,7 +1663,7 @@ export default function ConnectDashboard() {
     const params = new URLSearchParams(location.search);
     const requestedTab = params.get('tab');
 
-    if (requestedTab && ['inbox', 'calls', 'broadcast', 'templates', 'contacts', 'automations', 'profile', 'channel_status', 'settings'].includes(requestedTab)) {
+    if (requestedTab && ['inbox', 'calls', 'broadcast', 'templates', 'contacts', 'profile', 'channel_status', 'settings'].includes(requestedTab)) {
       setActiveTab(requestedTab as TabType);
     }
   }, [location.search]);
@@ -2347,11 +2353,12 @@ export default function ConnectDashboard() {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setCurrentUserProfile(data);
-          if (data.whatsappCredentials) {
+          const activeAccount = getActiveWhatsAppAccount(data);
+          if (activeAccount) {
             whatsappService.setCredentials(
-              data.whatsappCredentials.accessToken,
-              data.whatsappCredentials.phoneNumberId,
-              data.whatsappCredentials.businessAccountId
+              activeAccount.accessToken,
+              activeAccount.phoneNumberId,
+              activeAccount.businessAccountId
             );
             // Only fetch if we haven't fetched recently
             fetchData();
@@ -2391,10 +2398,9 @@ export default function ConnectDashboard() {
       broadcast: { title: 'Broadcast', description: 'Launch campaigns, monitor delivery, and keep campaign execution focused.' },
       templates: { title: 'Templates', description: 'Manage approved templates, review content quickly, and create new ones from one place.' },
       contacts: { title: 'Contacts', description: 'Organize customers, import lists, and keep relationship data clean.' },
-      automations: { title: 'Automations', description: 'Design repeatable flows for follow-ups, routing, and routine work.' },
       settings: { title: 'Settings', description: 'Manage workspace access, account configuration, and admin controls.' },
       profile: { title: 'Business Profile', description: 'Polish your public business presence and verify key brand details.' },
-      channel_status: { title: 'Channels', description: 'Manage WhatsApp channel health, WABA connection, catalog, and calling readiness.' }
+      channel_status: { title: 'Connection', description: 'Manage the live WhatsApp Business account connected to this workspace.' }
     };
 
     return tabConfig[activeTab];
@@ -2430,10 +2436,6 @@ export default function ConnectDashboard() {
         { label: 'Stored contacts', value: contacts.length.toLocaleString() },
         { label: 'Unread', value: unreadConversations.toLocaleString() }
       ],
-      automations: [
-        { label: 'Rule groups', value: '3' },
-        { label: 'Automation state', value: 'Ready' }
-      ],
       settings: [
         { label: 'Workspace', value: 'Configured' },
         { label: 'Notifications', value: notificationSettings.browserEnabled ? 'Enabled' : 'Muted' }
@@ -2443,8 +2445,8 @@ export default function ConnectDashboard() {
         { label: 'Phone ID', value: accountInfo?.phoneId ? 'Connected' : 'Pending' }
       ],
       channel_status: [
-        { label: 'Connected numbers', value: phoneNumbers.length.toLocaleString() },
-        { label: 'WABA status', value: String(accountInfo?.status || phoneNumbers[0]?.status || 'Unknown') }
+        { label: 'WhatsApp Business', value: accountInfo?.phoneId || phoneNumbers[0]?.phoneId ? 'Connected' : 'Pending' },
+        { label: 'Active number', value: accountInfo?.displayPhoneNumber || phoneNumbers[0]?.displayPhoneNumber || 'Pending' }
       ]
     };
 
@@ -2480,7 +2482,7 @@ export default function ConnectDashboard() {
     );
   }
 
-  if (!currentUserProfile?.whatsappCredentials) {
+  if (!getActiveWhatsAppAccount(currentUserProfile)) {
     return (
       <>
         <AppDialogHost isDark={isDark} />
@@ -2813,14 +2815,6 @@ export default function ConnectDashboard() {
           />
 
           <NavItem 
-            icon={<Workflow size={20} strokeWidth={2.2} />} 
-            label="Automations" 
-            active={activeTab === 'automations'} 
-            onClick={() => { setActiveTab('automations'); setIsSidebarOpen(false); }}
-            isDark={isDark}
-            collapsed={isSidebarCollapsed}
-          />
-          <NavItem 
             icon={<Building2 size={20} strokeWidth={2.2} />} 
             label="Business Profile" 
             active={activeTab === 'profile'} 
@@ -2830,7 +2824,7 @@ export default function ConnectDashboard() {
           />
           <NavItem 
             icon={<RadioTower size={20} strokeWidth={2.2} />} 
-            label="Channels" 
+            label="Connection" 
             active={activeTab === 'channel_status'} 
             onClick={() => { setActiveTab('channel_status'); setIsSidebarOpen(false); }}
             isDark={isDark}
@@ -2881,58 +2875,60 @@ export default function ConnectDashboard() {
 
       {/* Main Content */}
       <main className="desktop-main-offset flex-1 app-safe-screen flex flex-col relative z-10">
-        <header className="sticky top-0 z-40 px-4 py-4 transition-colors duration-300 md:px-6 xl:px-8">
-          <div className="app-header-card app-header-compact flex flex-wrap items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <button 
-                onClick={() => setIsSidebarOpen(true)}
-                className="app-header-action-secondary md:hidden p-2 rounded-xl shrink-0"
-              >
-                <Filter size={20} />
-              </button>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                  <h2 className="app-header-title truncate font-black tracking-tight">
-                    {tabDetails.title}
-                  </h2>
-                  {headerHighlights.map((item) => (
-                    <div
-                      key={`${item.label}-${item.value}`}
-                      className="app-header-chip hidden rounded-full px-2.5 py-1 text-[10px] font-semibold md:inline-flex"
-                    >
-                      <span className="mr-1.5 opacity-60">{item.label}:</span>
-                      {item.value}
-                    </div>
-                  ))}
+        {activeTab !== 'inbox' && (
+          <header className="sticky top-0 z-40 px-4 py-4 transition-colors duration-300 md:px-6 xl:px-8">
+            <div className="app-header-card app-header-compact flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <button 
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="app-header-action-secondary md:hidden p-2 rounded-xl shrink-0"
+                >
+                  <Filter size={20} />
+                </button>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                    <h2 className="app-header-title truncate font-black tracking-tight">
+                      {tabDetails.title}
+                    </h2>
+                    {headerHighlights.map((item) => (
+                      <div
+                        key={`${item.label}-${item.value}`}
+                        className="app-header-chip hidden rounded-full px-2.5 py-1 text-[10px] font-semibold md:inline-flex"
+                      >
+                        <span className="mr-1.5 opacity-60">{item.label}:</span>
+                        {item.value}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-2 md:gap-3">
-              <div className="app-header-chip flex shrink-0 items-center gap-2 rounded-2xl px-3 py-2 text-[10px] font-medium md:text-xs">
-                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-[#5B45FF] rounded-full animate-pulse" />
-                <span className="max-w-[8rem] truncate font-mono text-[9px] md:max-w-[11rem] md:text-xs">{connectedNumberLabel}</span>
-                <span className="opacity-50">|</span>
-                <span className="font-bold">{connectedNumberHealth}</span>
-              </div>
-              {accountAvatar ? (
-                <img
-                  src={accountAvatar}
-                  alt="WhatsApp Business Account"
-                  className="w-10 h-10 md:w-11 md:h-11 rounded-2xl object-cover border border-white/20 shrink-0 shadow-sm"
-                />
-              ) : (
-                <div className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl font-bold text-xs md:h-11 md:w-11 md:text-base",
-                  "bg-[#5B45FF]/10 text-[#5B45FF]"
-                )}>
-                  {(currentUserProfile?.displayName || auth.currentUser?.displayName || '?')[0]}
+              <div className="flex flex-wrap items-center justify-end gap-2 md:gap-3">
+                <div className="app-header-chip flex shrink-0 items-center gap-2 rounded-2xl px-3 py-2 text-[10px] font-medium md:text-xs">
+                  <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-[#5B45FF] rounded-full animate-pulse" />
+                  <span className="max-w-[8rem] truncate font-mono text-[9px] md:max-w-[11rem] md:text-xs">{connectedNumberLabel}</span>
+                  <span className="opacity-50">|</span>
+                  <span className="font-bold">{connectedNumberHealth}</span>
                 </div>
-              )}
+                {accountAvatar ? (
+                  <img
+                    src={accountAvatar}
+                    alt="WhatsApp Business Account"
+                    className="w-10 h-10 md:w-11 md:h-11 rounded-2xl object-cover border border-white/20 shrink-0 shadow-sm"
+                  />
+                ) : (
+                  <div className={cn(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl font-bold text-xs md:h-11 md:w-11 md:text-base",
+                    "bg-[#5B45FF]/10 text-[#5B45FF]"
+                  )}>
+                    {(currentUserProfile?.displayName || auth.currentUser?.displayName || '?')[0]}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
+        )}
 
-        <div className="connect-content-pad flex-1">
+        <div className={cn("connect-content-pad flex-1", activeTab === 'inbox' && "connect-content-pad-inbox")}>
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -2975,9 +2971,18 @@ export default function ConnectDashboard() {
             {activeTab === 'broadcast' && <BroadcastSection isDark={isDark} templates={templates} broadcasts={broadcasts} contacts={contacts} isCreateTemplateModalOpen={isCreateTemplateModalOpen} setIsCreateTemplateModalOpen={setIsCreateTemplateModalOpen} />}
             {activeTab === 'templates' && <TemplatesSection isDark={isDark} templates={templates} isCreateTemplateModalOpen={isCreateTemplateModalOpen} setIsCreateTemplateModalOpen={setIsCreateTemplateModalOpen} />}
             {activeTab === 'contacts' && <ContactsSection isDark={isDark} contacts={contacts} />}
-            {activeTab === 'automations' && <AutomationsSection isDark={isDark} />}
             {activeTab === 'profile' && <ProfileSection isDark={isDark} />}
-            {activeTab === 'channel_status' && <ChannelStatusSection isDark={isDark} currentUserProfile={currentUserProfile} />}
+            {activeTab === 'channel_status' && (
+              <ChannelStatusSection
+                isDark={isDark}
+                currentUserProfile={currentUserProfile}
+                onAccountChanged={() => {
+                  setLoading(true);
+                  void fetchData(true);
+                  registerSocketSession();
+                }}
+              />
+            )}
             {activeTab === 'settings' && (
               <SettingsSection
                 isDark={isDark}
@@ -3327,16 +3332,32 @@ function OnboardingSection({ isDark, handleLogout }: { isDark: boolean, handleLo
 
     try {
       if (auth.currentUser) {
+        const account = normalizeWhatsAppAccount({
+          accessToken,
+          phoneNumberId,
+          businessAccountId,
+          connectedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+
+        if (!account) {
+          showAppDialog({ tone: 'warning', message: 'Enter the access token, phone number ID, and WhatsApp Business Account ID.' });
+          return;
+        }
+
+        const accounts = upsertWhatsAppAccount({}, account);
         await setDoc(doc(db, 'users', auth.currentUser.uid), {
-          whatsappCredentials: {
-            accessToken,
-            phoneNumberId,
-            businessAccountId
+          whatsappCredentials: toLegacyWhatsAppCredentials(account),
+          whatsappAccounts: accounts,
+          activeWhatsappAccountId: account.id,
+          whatsappPhoneNumberIds: getWhatsAppPhoneNumberIds(accounts),
+          toolSetup: {
+            whatsapp: true
           }
         }, { merge: true });
         
         // Also update the service immediately so it's ready
-        whatsappService.setCredentials(accessToken, phoneNumberId, businessAccountId);
+        whatsappService.setCredentials(account.accessToken, account.phoneNumberId, account.businessAccountId);
       }
     } catch (error) {
       console.error('Error saving credentials:', error);
@@ -3395,15 +3416,27 @@ function OnboardingSection({ isDark, handleLogout }: { isDark: boolean, handleLo
             const data = await res.json();
             
             if (auth.currentUser) {
+              const account = normalizeWhatsAppAccount({
+                accessToken: data.accessToken,
+                phoneNumberId: data.phoneNumberId,
+                businessAccountId: data.wabaId,
+                twoStepVerificationPin: data.twoStepVerificationPin || null,
+                registrationStatus: data.provisioning?.registration?.success ? 'registered' : 'pending',
+                registeredAt: data.provisioning?.registeredAt || null,
+                connectedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              });
+
+              if (!account) {
+                throw new Error('Embedded signup did not return a complete WhatsApp account.');
+              }
+
+              const accounts = upsertWhatsAppAccount({}, account);
               await setDoc(doc(db, 'users', auth.currentUser.uid), {
-                whatsappCredentials: {
-                  accessToken: data.accessToken,
-                  phoneNumberId: data.phoneNumberId,
-                  businessAccountId: data.wabaId,
-                  twoStepVerificationPin: data.twoStepVerificationPin || null,
-                  registrationStatus: data.provisioning?.registration?.success ? 'registered' : 'pending',
-                  registeredAt: data.provisioning?.registeredAt || null
-                },
+                whatsappCredentials: toLegacyWhatsAppCredentials(account),
+                whatsappAccounts: accounts,
+                activeWhatsappAccountId: account.id,
+                whatsappPhoneNumberIds: getWhatsAppPhoneNumberIds(accounts),
                 whatsappProvisioning: {
                   twoStepVerification: data.provisioning?.twoStepVerification || null,
                   registration: data.provisioning?.registration || null,
@@ -3416,7 +3449,7 @@ function OnboardingSection({ isDark, handleLogout }: { isDark: boolean, handleLo
                 }
               }, { merge: true });
               
-              whatsappService.setCredentials(data.accessToken, data.phoneNumberId, data.wabaId);
+              whatsappService.setCredentials(account.accessToken, account.phoneNumberId, account.businessAccountId);
               showAppDialog({ tone: 'success', message: 'Successfully connected WhatsApp Business Account!' });
               
               // Reload page to reflect changes
@@ -3719,23 +3752,16 @@ function OverviewSection({ isDark, templates, broadcasts, stats, channels, accou
     const whatsappConnected = accountInfo?.status === 'CONNECTED';
     return [
       {
-        name: 'WhatsApp',
-        detail: accountInfo?.displayPhoneNumber || 'Primary business channel',
+        name: 'WhatsApp Business',
+        detail: accountInfo?.displayPhoneNumber || 'Live business account',
         connected: whatsappConnected,
         icon: <WhatsAppIcon size={20} />,
-        iconFrameClass: ''
-      },
-      {
-        name: 'WhatsApp Calls',
-        detail: 'Coming soon',
-        connected: false,
-        icon: <WhatsAppCallsIcon size={20} />,
         iconFrameClass: ''
       }
     ];
   }, [accountInfo]);
 
-  const totalConnectedChannels = channelCards.filter((channel) => channel.connected).length;
+  const isWhatsAppBusinessConnected = channelCards.some((channel) => channel.connected);
   const deliveryRate = overviewStats.sent > 0 ? `${Math.round((overviewStats.delivered / overviewStats.sent) * 100)}%` : '0%';
   const readRate = overviewStats.sent > 0 ? `${Math.round((overviewStats.read / overviewStats.sent) * 100)}%` : '0%';
   const replyRate = overviewStats.sent > 0 ? `${Math.round((overviewStats.replied / overviewStats.sent) * 100)}%` : '0%';
@@ -3922,15 +3948,15 @@ function OverviewSection({ isDark, templates, broadcasts, stats, channels, accou
         <div className={cn("rounded-[1.6rem] border p-4 md:p-5", isDark ? "border-gray-800 bg-slate-900 shadow-[0_24px_70px_rgba(2,8,23,0.24)]" : "border-slate-200 bg-white shadow-[0_20px_55px_rgba(15,23,42,0.08)]")}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Workspace Reach</p>
-              <h3 className="mt-2 text-lg font-black tracking-tight">Connected Channels</h3>
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Workspace Connection</p>
+              <h3 className="mt-2 text-lg font-black tracking-tight">WhatsApp Business</h3>
             </div>
             <span className={cn("rounded-full px-3 py-1 text-[10px] font-semibold", isDark ? "bg-white/10 text-slate-300" : "bg-slate-100 text-slate-600")}>
-              {totalConnectedChannels} connected
+              {isWhatsAppBusinessConnected ? 'Connected' : 'Pending'}
             </span>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <div className="mt-4 grid gap-2">
             {channelCards.map((channel) => (
               <div
                 key={channel.name}
@@ -4703,7 +4729,7 @@ function InboxSection({
     }
 
     if (!connectedCatalogId) {
-      showAppDialog({ tone: 'warning', message: 'Connect a WhatsApp catalog first from Channels.' });
+      showAppDialog({ tone: 'warning', message: 'No WhatsApp catalog is connected for this workspace.' });
       return;
     }
 
@@ -4916,48 +4942,48 @@ function InboxSection({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       className={cn(
-        "connect-inbox-frame rounded-[1.7rem] md:rounded-[2rem] border overflow-hidden flex relative shadow-[0_24px_70px_rgba(15,23,42,0.08)]",
-        isDark ? "border-gray-800 bg-slate-900" : "border-slate-200/85 bg-white/95 backdrop-blur-xl"
+        "connect-inbox-frame rounded-[2rem] border p-3 md:p-4 gap-3 md:gap-4 overflow-hidden flex relative",
+        isDark ? "border-gray-800 bg-slate-950 shadow-[0_24px_70px_rgba(2,8,23,0.32)]" : "border-slate-200/70 bg-[#f3f7fb] shadow-[0_24px_70px_rgba(15,23,42,0.08)]"
       )}
     >
       {/* Chat List */}
       <div className={cn(
-        "absolute inset-0 md:relative md:inset-auto w-full md:w-[clamp(17.5rem,19vw,20rem)] border-r flex flex-col transition-transform duration-300 z-20 backdrop-blur-sm",
-        isDark ? "bg-[#0d1729]/96 border-gray-800" : "bg-white/96 border-slate-200/80",
+        "absolute inset-3 md:relative md:inset-auto w-[calc(100%-1.5rem)] md:w-[clamp(21rem,23vw,24.5rem)] rounded-[1.45rem] border flex flex-col overflow-hidden transition-transform duration-300 z-20",
+        isDark ? "bg-[#0d1729]/96 border-gray-800" : "bg-white border-white shadow-[0_18px_50px_rgba(15,23,42,0.06)]",
         showChatList ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
-        <div className={cn("border-b p-4", isDark ? "border-white/8" : "border-slate-200/80")}>
+        <div className={cn("p-5", isDark ? "border-white/8" : "border-slate-100")}>
           <div className="relative">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-base font-black tracking-tight">Inbox</h3>
-                <p className="mt-0.5 text-[11px] text-slate-500">{filteredContacts.length} conversations</p>
+                <h3 className="text-2xl font-black tracking-tight">Inbox</h3>
+                <p className="mt-1 text-sm text-slate-500">{filteredContacts.length} conversations</p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsNewChatOpen(true)}
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#5B45FF] px-3 text-[11px] font-bold text-white shadow-sm transition-all hover:bg-[#4b38df]"
+                className="inline-flex h-12 items-center gap-2 rounded-xl bg-[#5B45FF] px-5 text-sm font-bold text-white shadow-[0_12px_24px_rgba(91,69,255,0.24)] transition-all hover:bg-[#4b38df]"
               >
-                <Plus size={14} />
-                New Chat
+                <Plus size={18} />
+                New chat
               </button>
             </div>
           </div>
-          <div className="mt-3 flex items-center gap-2">
-            <div className={cn("flex flex-1 items-center gap-2 rounded-xl border px-3 py-2", isDark ? "border-gray-700 bg-gray-800" : "border-slate-200 bg-slate-50")}>
-              <Search size={16} className="text-gray-500" />
+          <div className="mt-5 flex items-center gap-2">
+            <div className={cn("flex flex-1 items-center gap-3 rounded-2xl px-4 py-3", isDark ? "bg-gray-800" : "bg-[#f6f7f9]")}>
+              <Search size={18} className="text-slate-500" />
               <input
                 type="text"
                 value={chatSearch}
                 onChange={(e) => setChatSearch(e.target.value)}
-                placeholder="Search chats..."
-                className="w-full border-none bg-transparent text-xs outline-none"
+                placeholder="Search"
+                className="w-full border-none bg-transparent text-sm outline-none placeholder:text-slate-400"
               />
             </div>
             <button
               type="button"
               onClick={() => setShowChatFilterPopup((prev) => !prev)}
-              className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-all", isDark ? "bg-gray-800 text-slate-300 hover:bg-gray-700" : "bg-white text-slate-600 shadow-sm hover:bg-slate-50")}
+              className={cn("flex h-12 w-12 items-center justify-center rounded-2xl transition-all", isDark ? "bg-gray-800 text-slate-300 hover:bg-gray-700" : "bg-[#f6f7f9] text-slate-500 hover:bg-slate-100")}
             >
               <SlidersHorizontal size={16} />
             </button>
@@ -5062,21 +5088,36 @@ function InboxSection({
               </motion.div>
             )}
           </AnimatePresence>
-          <div className="mt-3 flex gap-1 overflow-x-auto pb-1 no-scrollbar">
-            {(['all', 'unread', 'starred', 'favorites'] as const).map((f) => (
+          <div className={cn("mt-4 grid grid-cols-3 rounded-2xl p-1", isDark ? "bg-gray-800" : "bg-[#f1f2f5]")}>
+            {(['all', 'unread', 'starred'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setActiveFilter(f)}
                 className={cn(
-                  "px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap",
+                  "rounded-xl px-3 py-2 text-sm font-semibold capitalize transition-all whitespace-nowrap",
                   activeFilter === f
-                    ? "bg-[#5B45FF] text-white"
-                    : (isDark ? "bg-gray-800 text-gray-400 hover:text-white" : "bg-gray-100 text-gray-500 hover:text-gray-900")
+                    ? (isDark ? "bg-[#5B45FF] text-white" : "bg-white text-slate-950 shadow-sm")
+                    : (isDark ? "text-gray-400 hover:text-white" : "text-slate-500 hover:text-slate-900")
                 )}
               >
                 {f}
               </button>
             ))}
+          </div>
+          <div className="mt-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#5B45FF] text-white"><MessageSquareText size={17} /></span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/12"><WhatsAppIcon size={19} /></span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-400 via-pink-500 to-violet-600 text-xs font-black text-white">IG</span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500 text-xs font-black text-white">M</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveFilter('all')}
+              className="text-xs font-semibold text-slate-500 transition-colors hover:text-slate-900"
+            >
+              All Channels
+            </button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto no-scrollbar">
@@ -5101,10 +5142,9 @@ function InboxSection({
                   setShowChatList(false);
                 }}
                 className={cn(
-                  "group flex w-full gap-3 border-b px-4 py-3.5 text-left transition-all",
-                  isDark ? "border-gray-800/50" : "border-gray-100",
+                  "group flex w-full gap-3 px-5 py-4 text-left transition-all",
                   isSelectedContactRow
-                    ? (isDark ? "bg-[#5B45FF]/10" : "bg-[#5B45FF] text-white") 
+                    ? (isDark ? "bg-[#5B45FF]/10" : "bg-[#f0edff] text-slate-950") 
                     : (isDark ? "hover:bg-white/5" : "hover:bg-slate-50")
                 )}
               >
@@ -5112,24 +5152,24 @@ function InboxSection({
                   <img 
                     src={getConversationAvatarUrl(contact)}
                     alt={contact.fullName || contact.name || 'Conversation profile'}
-                    className="w-10 h-10 rounded-full object-cover"
+                    className="w-12 h-12 rounded-full object-cover ring-1 ring-slate-200"
                     referrerPolicy="no-referrer"
                   />
-                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#5B45FF] border-2 border-[#111827] rounded-full" />
+                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start">
-                    <h4 className="truncate text-sm font-bold">{contact.fullName || contact.name || contact.whatsappNumber || 'Unknown'}</h4>
+                    <h4 className="truncate text-base font-bold">{contact.fullName || contact.name || contact.whatsappNumber || 'Unknown'}</h4>
                     <div className="flex items-center gap-1 shrink-0 ml-2">
                       {isFavorite && <Heart size={10} className="text-red-500 fill-red-500" />}
                       {isStarred && <Star size={10} className="text-yellow-500 fill-yellow-500" />}
-                      <span className={cn("text-[9px] md:text-[10px] uppercase", isSelectedContactRow && !isDark ? "text-white/90" : "text-gray-500")}>
+                      <span className="text-xs text-slate-500">
                         {contact.lastMessageTime ? new Date(contact.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                       </span>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center mt-1">
-                    <p className={cn("text-[11px] truncate flex-1", isSelectedContactRow && !isDark ? "text-white/85" : "text-gray-400")}>{contactPreviewText || contact.whatsappNumber}</p>
+                  <div className="flex justify-between items-center mt-1.5">
+                    <p className="text-sm truncate flex-1 text-slate-500">{contactPreviewText || contact.whatsappNumber}</p>
                     {contact.unreadCount > 0 && (
                       <AnimatePresence initial={false}>
                         <motion.span
@@ -5151,10 +5191,10 @@ function InboxSection({
       </div>
 
       {/* Chat Window */}
-      <div className={cn("flex-1 flex flex-col relative z-0", isDark ? "bg-[#08111f]/35" : "bg-transparent")}>
+      <div className={cn("flex-1 flex flex-col relative z-0 overflow-hidden rounded-[1.45rem] border", isDark ? "border-gray-800 bg-[#08111f]/35" : "border-white bg-white shadow-[0_18px_50px_rgba(15,23,42,0.05)]")}>
         {selectedContact ? (
           <>
-            <div className={cn("flex items-center justify-between border-b px-4 py-3 backdrop-blur-sm", isDark ? "border-white/8 bg-[#0b1527]/70" : "border-slate-200/80 bg-white/82")}>
+            <div className={cn("flex items-center justify-between border-b px-6 py-5", isDark ? "border-white/8 bg-[#0b1527]/70" : "border-slate-100 bg-white")}>
               <div className="flex items-center gap-3">
                 <button 
                   onClick={() => setShowChatList(true)}
@@ -5162,18 +5202,17 @@ function InboxSection({
                 >
                   <ChevronRight className="rotate-180" size={20} />
                 </button>
-                <img
-                  src={getConversationAvatarUrl(selectedContact)}
-                  alt={selectedContact.fullName || selectedContact.name || 'Conversation profile'}
-                  className="h-9 w-9 rounded-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
                 <div className="min-w-0">
-                  <h4 className="truncate text-base font-bold leading-tight">{selectedContact.fullName || selectedContact.name}</h4>
-                  <p className="text-[10px] text-slate-400">{selectedContact.whatsappNumber || selectedContact.phone || ''}</p>
+                  <h4 className="truncate text-xl font-black leading-tight">{selectedContact.fullName || selectedContact.name || selectedContact.whatsappNumber}</h4>
+                  <div className="mt-2 flex items-center gap-2 text-sm text-slate-500">
+                    <WhatsAppIcon size={16} />
+                    <span>WhatsApp</span>
+                    <span className="h-1 w-1 rounded-full bg-slate-300" />
+                    <span>Window active</span>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-gray-400">
+              <div className="flex items-center gap-3 text-slate-400">
                 <button 
                   onClick={() => toggleStar(selectedContact.id || selectedContact.whatsappNumber)}
                   className={cn("rounded-xl p-2 transition-colors", starredIds.has(selectedContact.id || selectedContact.whatsappNumber) ? "text-yellow-500" : "hover:bg-slate-100 hover:text-slate-700")}
@@ -5198,18 +5237,16 @@ function InboxSection({
                 >
                   <Heart size={18} fill={favoriteIds.has(selectedContact.id || selectedContact.whatsappNumber) ? "currentColor" : "none"} />
                 </button>
-                <button className="rounded-xl p-2 hover:bg-slate-100 hover:text-slate-700"><Search size={18} /></button>
                 <button className="rounded-xl p-2 hover:bg-slate-100 hover:text-slate-700"><MoreHorizontal size={18} /></button>
               </div>
             </div>
             <div 
               ref={messagesViewportRef}
               className={cn(
-                "flex-1 p-3.5 md:p-4 overflow-y-auto space-y-3 relative no-scrollbar",
-                "chat-canvas-light"
+                "flex-1 overflow-y-auto space-y-4 relative no-scrollbar bg-[#f8fafc] px-5 py-6 md:px-10"
               )}
             >
-              <div className="relative z-0 space-y-3">
+              <div className="relative z-0 mx-auto max-w-3xl space-y-4">
                 {loadingMessages ? (
                   <div className="flex justify-center items-center h-full">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5B45FF]"></div>
@@ -5273,11 +5310,11 @@ function InboxSection({
                         className={cn("flex", isSentByUs ? "justify-end" : "justify-start")}
                       >
                         <div className={cn(
-                          "max-w-[82%] md:max-w-[68%] p-2.5 md:p-3 rounded-[1.2rem] text-[13px] shadow-sm backdrop-blur-sm",
+                          "max-w-[86%] md:max-w-[72%] rounded-[1.25rem] px-4 py-3 text-[15px] leading-7 shadow-sm",
                           isFailedMessage
                             ? (isDark ? "rounded-tr-sm bg-rose-500 text-white shadow-[0_16px_35px_rgba(244,63,94,0.24)]" : "rounded-tr-sm bg-rose-100 text-slate-900 border border-rose-200")
                             : isSentByUs 
-                            ? (isDark ? "rounded-tr-sm bg-[#5B45FF] text-white shadow-[0_16px_35px_rgba(91,69,255,0.24)]" : "rounded-tr-sm bg-[#5B45FF] text-white border border-[#5B45FF]")
+                            ? (isDark ? "rounded-tr-sm bg-[#5B45FF] text-white shadow-[0_16px_35px_rgba(91,69,255,0.24)]" : "rounded-tr-sm bg-[#2f66e8] text-white")
                             : (isDark ? "rounded-tl-sm bg-white/8 text-white border border-white/8" : "rounded-tl-sm bg-white/92 text-gray-900 border border-white")
                         )}>
                           {isTemplateMessage && (
@@ -5600,7 +5637,7 @@ function InboxSection({
                 <div ref={messagesEndRef} />
               </div>
             </div>
-            <div className={cn("relative z-40 p-3 border-t backdrop-blur-sm", isDark ? "border-white/8 bg-[#0b1527]/75" : "border-slate-200/80 bg-white/75")}>
+            <div className={cn("relative z-40 border-t p-4", isDark ? "border-white/8 bg-[#0b1527]/75" : "border-slate-100 bg-white")}>
               <div className="relative z-40">
                 <AnimatePresence>
                   {showComposerTools && (
@@ -5752,7 +5789,7 @@ function InboxSection({
                         <div>
                           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">WhatsApp Catalog</p>
                           <p className="mt-1 text-xs text-slate-500">
-                            {connectedCatalogId ? `Catalog ID: ${connectedCatalogId}` : 'Connect a catalog from Channels first.'}
+                            {connectedCatalogId ? `Catalog ID: ${connectedCatalogId}` : 'No WhatsApp catalog is connected for this workspace.'}
                           </p>
                         </div>
                         {catalogProductsLoading && <RefreshCw size={14} className="animate-spin text-slate-400" />}
@@ -5816,7 +5853,7 @@ function InboxSection({
                   )}
                 </AnimatePresence>
 
-                <div className={cn("flex items-center gap-2 p-2 rounded-[1.1rem] border", isDark ? "border-white/8 bg-white/6" : "border-slate-200 bg-slate-50/90")}>
+                <div className={cn("flex items-center gap-2 rounded-2xl border p-2", isDark ? "border-white/8 bg-white/6" : "border-slate-200 bg-[#f8fafc]")}>
                   <button
                     type="button"
                     onClick={() => setShowComposerTools((prev) => !prev)}
@@ -5837,7 +5874,7 @@ function InboxSection({
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                     placeholder="Type a message..."
-                    className="bg-transparent border-none outline-none text-[13px] flex-1 py-1"
+                    className="bg-transparent border-none outline-none text-sm flex-1 py-2"
                   />
                   <motion.button
                     whileTap={{ scale: 0.95 }}
@@ -5866,7 +5903,7 @@ function InboxSection({
         ) : (
           <div className={cn(
             "flex-1 flex flex-col items-center justify-center p-8 text-center relative",
-            "chat-canvas-light"
+            "bg-[#f8fafc]"
           )}>
             <div className="relative z-10 flex flex-col items-center">
               <div className={cn("w-16 h-16 rounded-full flex items-center justify-center mb-4", isDark ? "bg-gray-800" : "bg-white shadow-sm")}>
@@ -5896,9 +5933,9 @@ function InboxSection({
       {/* Contact Info Pane - Desktop Only */}
       {selectedContact && (
         <div className={cn(
-          "hidden min-h-0 border-l flex-col overflow-hidden backdrop-blur-sm transition-all duration-300 lg:flex",
-          isContactDetailsCollapsed ? "w-[4.25rem]" : "w-[clamp(16.5rem,18vw,19.5rem)]",
-          isDark ? "border-white/8 bg-[#08111f]/40" : "border-slate-200/80 bg-white/72"
+          "hidden min-h-0 rounded-[1.45rem] border flex-col overflow-hidden transition-all duration-300 lg:flex",
+          isContactDetailsCollapsed ? "w-[4.25rem]" : "w-[clamp(19rem,20vw,22rem)]",
+          isDark ? "border-white/8 bg-[#08111f]/40" : "border-white bg-white shadow-[0_18px_50px_rgba(15,23,42,0.05)]"
         )}>
           {isContactDetailsCollapsed ? (
             <div className="flex h-full flex-col items-center gap-4 p-3">
@@ -5922,10 +5959,10 @@ function InboxSection({
             </div>
           ) : (
             <>
-              <div className={cn("flex items-center justify-between border-b px-4 py-3", isDark ? "border-white/8" : "border-slate-200/80")}>
+              <div className={cn("flex items-center justify-between border-b px-5 py-4", isDark ? "border-white/8" : "border-slate-100")}>
                 <div>
-                  <p className="text-sm font-bold">Contact Details</p>
-                  <p className="mt-0.5 text-[11px] text-slate-500">Profile and notes</p>
+                  <p className="text-base font-bold">Contact Info</p>
+                  <p className="mt-0.5 text-xs text-slate-500">Profile and workspace data</p>
                 </div>
                 <button
                   type="button"
@@ -5936,19 +5973,28 @@ function InboxSection({
                   <ChevronRight size={18} />
                 </button>
               </div>
-              <div className="flex-1 min-h-0 overflow-y-auto p-4">
-                <div className="mb-5 rounded-[1.5rem] border p-4 text-center shadow-sm backdrop-blur-sm">
+              <div className="flex-1 min-h-0 overflow-y-auto p-5">
+                <div className="mb-5 border-b border-slate-100 pb-5 text-center">
                   <img
                     src={getConversationAvatarUrl(selectedContact)}
                     alt={selectedContact.fullName || selectedContact.name || 'Conversation profile'}
-                    className="mx-auto mb-3 h-16 w-16 rounded-full object-cover"
+                    className="mx-auto mb-3 h-16 w-16 rounded-full object-cover ring-4 ring-emerald-50"
                     referrerPolicy="no-referrer"
                   />
                   <h4 className="text-base font-bold">{selectedContact.fullName || selectedContact.name}</h4>
-                  <p className="mt-1 text-xs text-gray-400">{selectedContact.whatsappNumber || selectedContact.phone}</p>
+                  <div className="mt-2 flex items-center justify-center gap-2 text-xs text-slate-500">
+                    <WhatsAppIcon size={14} />
+                    <span>{selectedContact.whatsappNumber || selectedContact.phone}</span>
+                  </div>
                 </div>
                 
-                <div className="space-y-3">
+                <div className="space-y-5">
+                  <div>
+                    <div className="mb-3 flex items-center justify-between">
+                      <p className="text-sm font-bold">Contact Info</p>
+                      <ChevronDown size={16} className="text-slate-400" />
+                    </div>
+                    <div className="space-y-3">
                   {renderDetailField({
                     id: 'name',
                     label: 'Contact Name',
@@ -5963,6 +6009,27 @@ function InboxSection({
                     placeholder: 'Add contact phone number',
                     onChange: setContactInfoDraft
                   })}
+                    </div>
+                  </div>
+                  <div className="border-t border-slate-100 pt-5">
+                    <div className="mb-3 flex items-center justify-between">
+                      <p className="text-sm font-bold">Labels</p>
+                      <ChevronDown size={16} className="text-slate-400" />
+                    </div>
+                  {renderDetailField({
+                    id: 'tags',
+                    label: 'Contact Tags',
+                    value: contactTags,
+                    placeholder: 'vip, lead, support',
+                    onChange: setContactTags
+                  })}
+                  </div>
+                  <div className="border-t border-slate-100 pt-5">
+                    <div className="mb-3 flex items-center justify-between">
+                      <p className="text-sm font-bold">CRM Properties</p>
+                      <ChevronRight size={16} className="text-slate-400" />
+                    </div>
+                    <div className="space-y-3">
                   {renderDetailField({
                     id: 'attributes',
                     label: 'Contact Attributes',
@@ -5972,13 +6039,6 @@ function InboxSection({
                     onChange: setContactAttributesDraft
                   })}
                   {renderDetailField({
-                    id: 'tags',
-                    label: 'Contact Tags',
-                    value: contactTags,
-                    placeholder: 'vip, lead, support',
-                    onChange: setContactTags
-                  })}
-                  {renderDetailField({
                     id: 'notes',
                     label: 'Contact Notes',
                     value: contactNotes,
@@ -5986,6 +6046,8 @@ function InboxSection({
                     multiline: true,
                     onChange: setContactNotes
                   })}
+                    </div>
+                  </div>
                 </div>
               </div>
             </>
@@ -8225,174 +8287,6 @@ function DataCard({ title, data, isDark }: { title: string, data: any, isDark: b
   );
 }
 
-function AutomationsSection({ isDark }: { isDark: boolean }) {
-  const [isCreateRuleOpen, setIsCreateRuleOpen] = useState(false);
-  const [selectedTriggerType, setSelectedTriggerType] = useState<'incoming' | 'attribute' | 'action_pending'>('incoming');
-
-  const ruleGroups = {
-    incoming: {
-      title: 'Incoming message based triggers',
-      subtitle: 'Triggers if a New WhatsApp Message is Received'
-    },
-    attribute: {
-      title: 'Attribute Based Triggers',
-      subtitle: 'New attribute is added to a Contact or an attribute value is changed for a contact'
-    },
-    action_pending: {
-      title: 'Action Pending Triggers',
-      subtitle: 'WhatsApp Customer No Response'
-    }
-  } as const;
-
-  const rules = [
-    { id: 1, name: 'Incoming message router', group: ruleGroups.incoming.title, trigger: 'Triggers if a New WhatsApp Message is Received', status: 'Active' },
-    { id: 2, name: 'Attribute update follow-up', group: ruleGroups.attribute.title, trigger: 'Runs when a contact attribute is added or changed', status: 'Draft' },
-    { id: 3, name: 'No response reminder', group: ruleGroups.action_pending.title, trigger: 'WhatsApp Customer No Response', status: 'Active' },
-  ];
-
-  return (
-    <motion.div 
-      key="automations"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="space-y-6"
-    >
-      <AnimatePresence>
-        {isCreateRuleOpen && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
-              onClick={() => setIsCreateRuleOpen(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, y: 18, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 12, scale: 0.98 }}
-              className={cn(
-                "relative w-full max-w-3xl rounded-[2rem] border p-6 md:p-8 shadow-2xl",
-                isDark ? "border-gray-800 bg-[#111827]" : "border-gray-200 bg-white"
-              )}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#5B45FF]">Create Rule</p>
-                  <h3 className="mt-2 text-2xl font-black tracking-tight">Automate messages, assignments, and chatbot flows</h3>
-                  <p className="mt-2 text-sm text-gray-500">Choose a trigger type below and build the rule flow that should happen next.</p>
-                </div>
-                <button onClick={() => setIsCreateRuleOpen(false)} className="rounded-xl px-3 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800">Close</button>
-              </div>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
-                {([
-                  { key: 'incoming', label: 'Incoming Message' },
-                  { key: 'attribute', label: 'Attribute Based' },
-                  { key: 'action_pending', label: 'Action Pending' }
-                ] as const).map((option) => (
-                  <button
-                    key={option.key}
-                    type="button"
-                    onClick={() => setSelectedTriggerType(option.key)}
-                    className={cn(
-                      "rounded-2xl border p-4 text-left transition-all",
-                      selectedTriggerType === option.key
-                        ? "border-[#5B45FF] bg-[#5B45FF]/10"
-                        : (isDark ? "border-gray-700 bg-gray-800/50 hover:border-gray-600" : "border-gray-200 bg-gray-50 hover:border-gray-300")
-                    )}
-                  >
-                    <p className="text-sm font-bold">{option.label}</p>
-                    <p className="mt-2 text-xs text-gray-500">{ruleGroups[option.key].subtitle}</p>
-                  </button>
-                ))}
-              </div>
-
-              <div className={cn("mt-6 rounded-[1.75rem] border p-5", isDark ? "border-gray-700 bg-gray-800/40" : "border-gray-200 bg-gray-50")}>
-                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#5B45FF]">{ruleGroups[selectedTriggerType].title}</p>
-                <p className="mt-3 text-sm font-medium text-gray-500">{ruleGroups[selectedTriggerType].subtitle}</p>
-
-                <div className="mt-5 grid gap-4 md:grid-cols-2">
-                  {selectedTriggerType === 'incoming' && (
-                    <>
-                      <TriggerLine title="Incoming message based triggers" copy="Triggers if a New WhatsApp Message is Received" isDark={isDark} />
-                      <TriggerLine title="Suggested actions" copy="Send automated messages, assign chats, or trigger chatbot flows." isDark={isDark} />
-                    </>
-                  )}
-                  {selectedTriggerType === 'attribute' && (
-                    <>
-                      <TriggerLine title="New attribute is added to a Contact" copy="Use this when a new label, stage, or field appears on a contact profile." isDark={isDark} />
-                      <TriggerLine title="An attribute value is changed for a contact" copy="Use this when lifecycle stage, owner, or any tracked field changes." isDark={isDark} />
-                    </>
-                  )}
-                  {selectedTriggerType === 'action_pending' && (
-                    <>
-                      <TriggerLine title="WhatsApp Customer No Response" copy="Trigger follow-ups or reassign chats when customers stop responding." isDark={isDark} />
-                      <TriggerLine title="Suggested actions" copy="Send reminders, move chat owner, or open escalation steps." isDark={isDark} />
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateRuleOpen(false)}
-                  className={cn("rounded-2xl px-5 py-3 text-sm font-bold", isDark ? "bg-gray-800 text-gray-200" : "bg-gray-100 text-gray-600")}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="rounded-2xl bg-[#5B45FF] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]/20 hover:bg-[#5B45FF] transition-all"
-                >
-                  Save Rule
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <div>
-          <p className="text-sm font-semibold">Rules</p>
-          <p className="text-sm text-gray-400">Create Rules to trigger automated messages, chat assignments, chatbots and more.</p>
-        </div>
-        <button onClick={() => setIsCreateRuleOpen(true)} className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[#5B45FF] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#5B45FF]/20 hover:bg-[#5B45FF] transition-all">
-          <Plus size={18} />
-          Create Rule
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {rules.map(auto => (
-          <div key={auto.id} className={cn("p-6 rounded-2xl md:rounded-3xl border space-y-4", isDark ? "bg-[#111827] border-gray-800" : "bg-white border-gray-200 shadow-sm")}>
-            <div className="flex justify-between items-start">
-              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500 shrink-0">
-                <Zap className="w-5 h-5 md:w-6 md:h-6" />
-              </div>
-              <span className={cn("px-2 py-1 rounded-lg text-[9px] md:text-[10px] font-bold uppercase", auto.status === 'Active' ? "bg-[#5B45FF]/10 text-[#5B45FF]" : "bg-yellow-500/10 text-yellow-500")}>
-                {auto.status}
-              </span>
-            </div>
-            <div>
-              <h4 className="font-bold text-base md:text-lg">{auto.name}</h4>
-              <p className="text-[10px] md:text-xs uppercase tracking-[0.22em] text-[#5B45FF] mt-2">{auto.group}</p>
-              <p className="text-xs md:text-sm text-gray-400 mt-1">{auto.trigger}</p>
-            </div>
-            <div className="pt-4 flex gap-2">
-              <button className={cn("flex-1 py-2 rounded-xl text-xs font-bold transition-all", isDark ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-100 hover:bg-gray-200")}>Edit Rule</button>
-              <button className={cn("p-2 rounded-xl text-red-400 transition-all", isDark ? "bg-gray-800 hover:bg-red-500/10" : "bg-gray-100 hover:bg-red-500/10")}><Trash2 size={18} /></button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
-
 function IntegrationsSection({ isDark }: { isDark: boolean }) {
   const integrations = [
     { name: 'Shopify', desc: 'Sync orders and send updates', icon: '🛍️' },
@@ -8930,31 +8824,25 @@ function CallsSection({
   );
 }
 
-function TriggerLine({ title, copy, isDark }: { title: string; copy: string; isDark: boolean }) {
-  return (
-    <div className={cn("rounded-2xl border p-4", isDark ? "border-gray-700 bg-gray-900/50" : "border-gray-200 bg-white")}>
-      <p className="text-sm font-bold">{title}</p>
-      <p className="mt-2 text-xs leading-6 text-gray-500">{copy}</p>
-    </div>
-  );
-}
-
-function ChannelStatusSection({ isDark, currentUserProfile }: { isDark: boolean, currentUserProfile: any }) {
+function ChannelStatusSection({
+  isDark,
+  currentUserProfile,
+  onAccountChanged
+}: {
+  isDark: boolean;
+  currentUserProfile: any;
+  onAccountChanged?: () => void;
+}) {
   const [businessAccounts, setBusinessAccounts] = useState<any[]>([]);
   const [phoneNumbers, setPhoneNumbers] = useState<WhatsAppPhoneNumber[]>([]);
   const [loading, setLoading] = useState(true);
   const [targetPhoneId, setTargetPhoneId] = useState<string>(whatsappService.getCredentials().PHONE_NUMBER_ID);
   const [disconnecting, setDisconnecting] = useState(false);
-  const [catalogs, setCatalogs] = useState<Array<{ id: string; name: string; vertical?: string }>>([]);
-  const [commerceSettings, setCommerceSettings] = useState<WhatsAppCommerceSettings | null>(null);
-  const [catalogIdInput, setCatalogIdInput] = useState(currentUserProfile?.whatsappCatalogConnection?.catalogId || '');
-  const [catalogVisible, setCatalogVisible] = useState(Boolean(currentUserProfile?.whatsappCatalogConnection?.isCatalogVisible));
-  const [cartEnabled, setCartEnabled] = useState(Boolean(currentUserProfile?.whatsappCatalogConnection?.isCartEnabled));
-  const [savingCommerce, setSavingCommerce] = useState(false);
-  const [loadingCommerce, setLoadingCommerce] = useState(false);
-  const [callingProbe, setCallingProbe] = useState<WhatsAppCallingProbe | null>(null);
-  const [loadingCallingProbe, setLoadingCallingProbe] = useState(false);
   const [provisioningNumber, setProvisioningNumber] = useState(false);
+  const [isAddingAccount, setIsAddingAccount] = useState(false);
+  const [savingAccount, setSavingAccount] = useState(false);
+  const connectedAccounts = getWhatsAppAccounts(currentUserProfile);
+  const activeConnectedAccount = getActiveWhatsAppAccount(currentUserProfile);
 
   useEffect(() => {
     let cancelled = false;
@@ -8962,17 +8850,15 @@ function ChannelStatusSection({ isDark, currentUserProfile }: { isDark: boolean,
     async function loadData() {
       setLoading(true);
       try {
-        const [accounts, phones, availableCatalogs] = await Promise.all([
+        const [accounts, phones] = await Promise.all([
           whatsappService.getBusinessAccounts(),
-          whatsappService.getPhoneNumbers(),
-          whatsappService.getCatalogs()
+          whatsappService.getPhoneNumbers()
         ]);
 
         if (cancelled) return;
 
         setBusinessAccounts(accounts);
         setPhoneNumbers(phones);
-        setCatalogs(availableCatalogs);
 
         const preferredPhoneId = targetPhoneId || whatsappService.getCredentials().PHONE_NUMBER_ID || phones[0]?.phoneId || '';
         if (preferredPhoneId) {
@@ -8996,59 +8882,6 @@ function ChannelStatusSection({ isDark, currentUserProfile }: { isDark: boolean,
     };
   }, []);
 
-  useEffect(() => {
-    if (!targetPhoneId) return;
-
-    let cancelled = false;
-
-    const loadCapabilityData = async () => {
-      setLoadingCommerce(true);
-      setLoadingCallingProbe(true);
-
-      try {
-        const [liveCommerceSettings, liveCallingProbe] = await Promise.all([
-          whatsappService.getCommerceSettings(targetPhoneId),
-          whatsappService.probeCallingApi(targetPhoneId)
-        ]);
-
-        if (cancelled) return;
-
-        const effectiveCommerce = liveCommerceSettings || {
-          connected: Boolean(currentUserProfile?.whatsappCatalogConnection?.catalogId),
-          catalogId: currentUserProfile?.whatsappCatalogConnection?.catalogId || '',
-          isCatalogVisible: Boolean(currentUserProfile?.whatsappCatalogConnection?.isCatalogVisible),
-          isCartEnabled: Boolean(currentUserProfile?.whatsappCatalogConnection?.isCartEnabled)
-        };
-
-        setCommerceSettings(effectiveCommerce);
-        setCatalogIdInput(effectiveCommerce?.catalogId || currentUserProfile?.whatsappCatalogConnection?.catalogId || '');
-        setCatalogVisible(Boolean(effectiveCommerce?.isCatalogVisible));
-        setCartEnabled(Boolean(effectiveCommerce?.isCartEnabled));
-        setCallingProbe(liveCallingProbe);
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Failed to load channel capability data:', error);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingCommerce(false);
-          setLoadingCallingProbe(false);
-        }
-      }
-    };
-
-    loadCapabilityData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    targetPhoneId,
-    currentUserProfile?.whatsappCatalogConnection?.catalogId,
-    currentUserProfile?.whatsappCatalogConnection?.isCatalogVisible,
-    currentUserProfile?.whatsappCatalogConnection?.isCartEnabled
-  ]);
-
   const primaryPhone = phoneNumbers.find((phone) => phone.phoneId === targetPhoneId) || phoneNumbers[0];
   const primaryAccount = businessAccounts.find((account) => account.id === primaryPhone?.wabaId) || businessAccounts[0];
   const credentials = whatsappService.getCredentials();
@@ -9069,14 +8902,31 @@ function ChannelStatusSection({ isDark, currentUserProfile }: { isDark: boolean,
     try {
       if (auth.currentUser) {
         const currentCredentials = whatsappService.getCredentials();
+        const activeAccount = getActiveWhatsAppAccount(currentUserProfile);
+        const nextAccount = activeAccount
+          ? {
+              ...activeAccount,
+              phoneNumberId: newPhoneId,
+              updatedAt: new Date().toISOString()
+            }
+          : normalizeWhatsAppAccount({
+              accessToken: currentCredentials.ACCESS_TOKEN,
+              businessAccountId: currentCredentials.BUSINESS_ACCOUNT_ID,
+              phoneNumberId: newPhoneId,
+              updatedAt: new Date().toISOString()
+            });
+
+        if (!nextAccount) return;
+
+        const accounts = upsertWhatsAppAccount(currentUserProfile, nextAccount);
         await setDoc(doc(db, 'users', auth.currentUser.uid), {
-          whatsappCredentials: {
-            accessToken: currentCredentials.ACCESS_TOKEN,
-            businessAccountId: currentCredentials.BUSINESS_ACCOUNT_ID,
-            phoneNumberId: newPhoneId
-          }
+          whatsappCredentials: toLegacyWhatsAppCredentials(nextAccount),
+          whatsappAccounts: accounts,
+          activeWhatsappAccountId: nextAccount.id,
+          whatsappPhoneNumberIds: getWhatsAppPhoneNumberIds(accounts)
         }, { merge: true });
-        whatsappService.setCredentials(currentCredentials.ACCESS_TOKEN, newPhoneId, currentCredentials.BUSINESS_ACCOUNT_ID);
+        whatsappService.setCredentials(nextAccount.accessToken, nextAccount.phoneNumberId, nextAccount.businessAccountId);
+        onAccountChanged?.();
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser?.uid}`);
@@ -9085,12 +8935,79 @@ function ChannelStatusSection({ isDark, currentUserProfile }: { isDark: boolean,
     }
   };
 
+  const handleAccountSwitch = async (accountId: string) => {
+    const nextAccount = connectedAccounts.find((account) => account.id === accountId);
+    if (!auth.currentUser || !nextAccount) return;
+
+    try {
+      setTargetPhoneId(nextAccount.phoneNumberId);
+      whatsappService.setCredentials(nextAccount.accessToken, nextAccount.phoneNumberId, nextAccount.businessAccountId);
+      await setDoc(doc(db, 'users', auth.currentUser.uid), {
+        activeWhatsappAccountId: nextAccount.id,
+        whatsappCredentials: toLegacyWhatsAppCredentials(nextAccount),
+        whatsappPhoneNumberIds: getWhatsAppPhoneNumberIds(connectedAccounts)
+      }, { merge: true });
+      onAccountChanged?.();
+      showAppDialog({ tone: 'success', message: `Switched to ${nextAccount.label || 'WhatsApp Business account'}.` });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser?.uid}`);
+      console.error('Failed to switch WhatsApp Business account:', error);
+      showAppDialog({ tone: 'error', message: 'Unable to switch WhatsApp Business accounts right now.' });
+    }
+  };
+
+  const handleAddAccount = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!auth.currentUser) return;
+
+    const formData = new FormData(event.currentTarget);
+    const account = normalizeWhatsAppAccount({
+      label: String(formData.get('label') || '').trim() || undefined,
+      accessToken: String(formData.get('accessToken') || '').trim(),
+      phoneNumberId: String(formData.get('phoneNumberId') || '').trim(),
+      businessAccountId: String(formData.get('businessAccountId') || '').trim(),
+      connectedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    if (!account) {
+      showAppDialog({ tone: 'warning', message: 'Enter the account label, access token, phone number ID, and WhatsApp Business Account ID.' });
+      return;
+    }
+
+    setSavingAccount(true);
+    try {
+      const accounts = upsertWhatsAppAccount(currentUserProfile, account);
+      await setDoc(doc(db, 'users', auth.currentUser.uid), {
+        whatsappAccounts: accounts,
+        activeWhatsappAccountId: account.id,
+        whatsappCredentials: toLegacyWhatsAppCredentials(account),
+        whatsappPhoneNumberIds: getWhatsAppPhoneNumberIds(accounts),
+        toolSetup: {
+          whatsapp: true
+        }
+      }, { merge: true });
+
+      whatsappService.setCredentials(account.accessToken, account.phoneNumberId, account.businessAccountId);
+      setTargetPhoneId(account.phoneNumberId);
+      setIsAddingAccount(false);
+      onAccountChanged?.();
+      showAppDialog({ tone: 'success', message: 'WhatsApp Business account connected.' });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser.uid}`);
+      console.error('Failed to add WhatsApp Business account:', error);
+      showAppDialog({ tone: 'error', message: 'Unable to connect this WhatsApp Business account right now.' });
+    } finally {
+      setSavingAccount(false);
+    }
+  };
+
   const handleDisconnect = async () => {
     if (!auth.currentUser) return;
 
     const confirmed = await showAppConfirm({
       tone: 'warning',
-      title: 'Disconnect WABA',
+      title: 'Disconnect WhatsApp Business',
       message: 'This will remove the connected WhatsApp Business Account from this workspace. You can reconnect it from onboarding later.',
       confirmLabel: 'Disconnect',
       cancelLabel: 'Keep Connected'
@@ -9100,14 +9017,25 @@ function ChannelStatusSection({ isDark, currentUserProfile }: { isDark: boolean,
 
     setDisconnecting(true);
     try {
+      const nextAccounts = connectedAccounts.filter((account) => account.id !== activeConnectedAccount?.id);
+      const nextActiveAccount = nextAccounts[0] || null;
       await setDoc(doc(db, 'users', auth.currentUser.uid), {
-        whatsappCredentials: null,
-        whatsappCatalogConnection: null,
+        whatsappCredentials: nextActiveAccount ? toLegacyWhatsAppCredentials(nextActiveAccount) : null,
+        whatsappAccounts: nextAccounts,
+        activeWhatsappAccountId: nextActiveAccount?.id || null,
+        whatsappPhoneNumberIds: getWhatsAppPhoneNumberIds(nextAccounts),
+        whatsappCatalogConnection: nextActiveAccount ? currentUserProfile?.whatsappCatalogConnection || null : null,
         toolSetup: {
-          whatsapp: false
+          whatsapp: Boolean(nextActiveAccount)
         }
       }, { merge: true });
-      whatsappService.clearCredentials();
+      if (nextActiveAccount) {
+        whatsappService.setCredentials(nextActiveAccount.accessToken, nextActiveAccount.phoneNumberId, nextActiveAccount.businessAccountId);
+        setTargetPhoneId(nextActiveAccount.phoneNumberId);
+      } else {
+        whatsappService.clearCredentials();
+      }
+      onAccountChanged?.();
       showAppDialog({ tone: 'success', message: 'WhatsApp Business Account disconnected.' });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser.uid}`);
@@ -9115,55 +9043,6 @@ function ChannelStatusSection({ isDark, currentUserProfile }: { isDark: boolean,
       showAppDialog({ tone: 'error', message: 'Unable to disconnect the WhatsApp Business Account right now.' });
     } finally {
       setDisconnecting(false);
-    }
-  };
-
-  const handleSaveCommerce = async () => {
-    if (!auth.currentUser || !targetPhoneId) return;
-
-    const trimmedCatalogId = catalogIdInput.trim();
-    if (!trimmedCatalogId) {
-      showAppDialog({ tone: 'warning', message: 'Enter a catalog ID before saving WhatsApp commerce settings.' });
-      return;
-    }
-
-    setSavingCommerce(true);
-    try {
-      const result = await whatsappService.updateCommerceSettings(targetPhoneId, {
-        catalogId: trimmedCatalogId,
-        isCatalogVisible: catalogVisible,
-        isCartEnabled: cartEnabled
-      });
-
-      if (!result.success) {
-        showAppDialog({ tone: 'error', message: result.error || 'Unable to connect the WhatsApp catalog right now.' });
-        return;
-      }
-
-      const nextCommerceSettings: WhatsAppCommerceSettings = {
-        connected: true,
-        catalogId: trimmedCatalogId,
-        isCatalogVisible: catalogVisible,
-        isCartEnabled: cartEnabled
-      };
-
-      setCommerceSettings(nextCommerceSettings);
-
-      await setDoc(doc(db, 'users', auth.currentUser.uid), {
-        whatsappCatalogConnection: {
-          ...nextCommerceSettings,
-          phoneNumberId: targetPhoneId,
-          updatedAt: new Date().toISOString()
-        }
-      }, { merge: true });
-
-      showAppDialog({ tone: 'success', message: 'WhatsApp catalog connected successfully.' });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser.uid}`);
-      console.error('Failed to save WhatsApp commerce settings:', error);
-      showAppDialog({ tone: 'error', message: 'Unable to connect the WhatsApp catalog right now.' });
-    } finally {
-      setSavingCommerce(false);
     }
   };
 
@@ -9196,15 +9075,28 @@ function ChannelStatusSection({ isDark, currentUserProfile }: { isDark: boolean,
         throw new Error(data.details?.registration?.error?.message || data.error || 'WhatsApp number registration failed.');
       }
 
+      const nextAccount = normalizeWhatsAppAccount({
+        ...(activeConnectedAccount || {}),
+        accessToken: currentCredentials.ACCESS_TOKEN,
+        phoneNumberId: targetPhoneId,
+        businessAccountId: connectedWabaId,
+        twoStepVerificationPin: data.twoStepVerificationPin || activeConnectedAccount?.twoStepVerificationPin || currentUserProfile?.whatsappCredentials?.twoStepVerificationPin || null,
+        registrationStatus: data.provisioning?.registration?.success ? 'registered' : 'pending',
+        registeredAt: data.provisioning?.registeredAt || null,
+        updatedAt: new Date().toISOString()
+      });
+
+      if (!nextAccount) {
+        throw new Error('WhatsApp number registration returned incomplete account data.');
+      }
+
+      const nextAccounts = upsertWhatsAppAccount(currentUserProfile, nextAccount);
+
       await setDoc(doc(db, 'users', auth.currentUser.uid), {
-        whatsappCredentials: {
-          accessToken: currentCredentials.ACCESS_TOKEN,
-          phoneNumberId: targetPhoneId,
-          businessAccountId: connectedWabaId,
-          twoStepVerificationPin: data.twoStepVerificationPin || currentUserProfile?.whatsappCredentials?.twoStepVerificationPin || null,
-          registrationStatus: data.provisioning?.registration?.success ? 'registered' : 'pending',
-          registeredAt: data.provisioning?.registeredAt || null
-        },
+        whatsappCredentials: toLegacyWhatsAppCredentials(nextAccount),
+        whatsappAccounts: nextAccounts,
+        activeWhatsappAccountId: nextAccount.id,
+        whatsappPhoneNumberIds: getWhatsAppPhoneNumberIds(nextAccounts),
         whatsappProvisioning: {
           twoStepVerification: data.provisioning?.twoStepVerification || null,
           registration: data.provisioning?.registration || null,
@@ -9218,6 +9110,7 @@ function ChannelStatusSection({ isDark, currentUserProfile }: { isDark: boolean,
       }, { merge: true });
 
       whatsappService.setCredentials(currentCredentials.ACCESS_TOKEN, targetPhoneId, connectedWabaId);
+      onAccountChanged?.();
 
       const [accounts, phones] = await Promise.all([
         whatsappService.getBusinessAccounts(),
@@ -9244,23 +9137,25 @@ function ChannelStatusSection({ isDark, currentUserProfile }: { isDark: boolean,
   }
 
   const accountFields = [
-    { label: 'WABA ID', value: connectedWabaId || 'Not available' },
-    { label: 'WABA Name', value: accountName },
+    { label: 'Business Account ID', value: connectedWabaId || 'Not available' },
+    { label: 'Account Name', value: accountName },
     { label: 'Phone Number ID', value: primaryPhone?.phoneId || targetPhoneId || 'Not available' },
-    { label: 'Display Number', value: primaryPhone?.displayPhoneNumber || 'Not available' }
+    { label: 'Display Number', value: primaryPhone?.displayPhoneNumber || 'Not available' },
+    { label: 'Verified Name', value: primaryPhone?.verifiedName || 'Not available' },
+    { label: 'Currency', value: primaryAccount?.currency || 'Not available' }
   ];
 
   const statusCards = [
     {
-      title: 'Phone Number Status',
-      icon: <Smartphone size={18} className="text-slate-400" />,
+      title: 'Connection',
+      icon: <LinkIcon size={18} className="text-slate-400" />,
       value: primaryPhone?.status || 'DISCONNECTED',
       helper: primaryPhone?.status === 'CONNECTED'
         ? 'This number is currently connected and ready for WhatsApp messaging.'
         : 'If this number should be active, reconnect or review it in Meta Business Manager.'
     },
     {
-      title: 'Message Limit',
+      title: 'Messaging Limit',
       icon: <Zap size={18} className="text-slate-400" />,
       value: messageLimitLabel || 'Unknown',
       helper: 'Business-initiated conversations allowed in a rolling 24-hour period.'
@@ -9285,93 +9180,199 @@ function ChannelStatusSection({ isDark, currentUserProfile }: { isDark: boolean,
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="mx-auto w-full max-w-6xl space-y-6 md:space-y-8"
+      className="mx-auto w-full max-w-6xl space-y-5 md:space-y-6"
     >
-      <div className={cn("rounded-2xl border p-6 md:rounded-3xl md:p-8", isDark ? "border-gray-800 bg-[#111827]" : "border-gray-200 bg-white shadow-sm")}>
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#5B45FF]/10">
-              <WabaIcon className="h-8 w-8" />
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <h3 className="text-xl font-black tracking-tight md:text-2xl">WhatsApp Channel</h3>
-                <span className={cn(
-                  "rounded-full px-3 py-1 text-[10px] font-semibold uppercase",
-                  primaryPhone?.status === 'CONNECTED'
-                    ? "bg-[#5B45FF]/10 text-[#5B45FF]"
-                    : "bg-rose-500/10 text-rose-500"
-                )}>
-                  {primaryPhone?.status || 'Disconnected'}
-                </span>
+      <div className={cn(
+        "overflow-hidden rounded-[1.75rem] border",
+        isDark ? "border-gray-800 bg-[#111827]" : "border-slate-200 bg-white shadow-sm"
+      )}>
+        <div className={cn("border-b px-5 py-5 md:px-7", isDark ? "border-white/8 bg-white/[0.03]" : "border-slate-200 bg-slate-50/70")}>
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#5B45FF]/10">
+                <WabaIcon className="h-8 w-8" />
               </div>
-              <p className={cn("mt-2 max-w-2xl text-sm leading-6", isDark ? "text-slate-400" : "text-slate-500")}>
-                Review the connected WABA, switch the active phone number, manage catalog settings, and disconnect this WhatsApp Business Account.
-              </p>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#5B45FF]">Connection</p>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <h3 className="text-xl font-black tracking-tight md:text-2xl">WhatsApp Business</h3>
+                  <span className={cn(
+                    "rounded-full px-3 py-1 text-[10px] font-semibold uppercase",
+                    primaryPhone?.status === 'CONNECTED'
+                      ? "bg-emerald-500/10 text-emerald-600"
+                      : "bg-rose-500/10 text-rose-500"
+                  )}>
+                    {primaryPhone?.status || 'Disconnected'}
+                  </span>
+                </div>
+                <p className={cn("mt-2 max-w-2xl text-sm leading-6", isDark ? "text-slate-400" : "text-slate-500")}>
+                  Manage the live WhatsApp Business account connected to this workspace.
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {primaryPhone?.status !== 'CONNECTED' && (
+            <div className="flex flex-wrap items-center gap-3">
+              {primaryPhone?.status !== 'CONNECTED' && (
+                <button
+                  type="button"
+                  onClick={() => void handleProvisionNumber()}
+                  disabled={provisioningNumber || !targetPhoneId || !connectedWabaId}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5B45FF] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]/20 transition-all hover:bg-[#4b38df] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <RefreshCw size={16} className={cn(provisioningNumber && "animate-spin")} />
+                  {provisioningNumber ? 'Registering...' : 'Retry Registration'}
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => void handleProvisionNumber()}
-                disabled={provisioningNumber || !targetPhoneId || !connectedWabaId}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#5B45FF] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]/20 transition-all hover:bg-[#4b38df] disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => void handleDisconnect()}
+                disabled={disconnecting}
+                className={cn(
+                  "inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold transition-all disabled:cursor-not-allowed disabled:opacity-50",
+                  isDark
+                    ? "border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/15"
+                    : "border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
+                )}
               >
-                <RefreshCw size={16} className={cn(provisioningNumber && "animate-spin")} />
-                {provisioningNumber ? 'Registering...' : 'Retry Registration'}
+                <Trash2 size={16} />
+                {disconnecting ? 'Disconnecting...' : 'Disconnect'}
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => void handleDisconnect()}
-              disabled={disconnecting}
-              className={cn(
-                "inline-flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-sm font-bold transition-all disabled:cursor-not-allowed disabled:opacity-50",
-                isDark
-                  ? "border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/15"
-                  : "border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
-              )}
-            >
-              <Trash2 size={16} />
-              {disconnecting ? 'Disconnecting...' : 'Disconnect WABA'}
-            </button>
+            </div>
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className={cn("rounded-[1.4rem] border p-4", isDark ? "border-gray-700 bg-gray-900/50" : "border-slate-200 bg-slate-50")}>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-bold">Active Phone Number</p>
-                <p className="mt-1 text-xs text-slate-500">Choose which connected WhatsApp number this workspace should use.</p>
+        <div className={cn("border-b p-5 md:p-7", isDark ? "border-white/8" : "border-slate-200")}>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm font-bold">Connected Accounts</p>
+              <p className={cn("mt-1 text-xs leading-5", isDark ? "text-slate-400" : "text-slate-500")}>
+                Switch between WhatsApp Business accounts inside this same platform login.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsAddingAccount((prev) => !prev)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5B45FF] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]/20 transition-all hover:bg-[#4b38df]"
+            >
+              <Plus size={16} />
+              {isAddingAccount ? 'Close' : 'Add Account'}
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {connectedAccounts.map((account) => {
+              const isActive = activeConnectedAccount?.id === account.id;
+              return (
+                <button
+                  key={account.id}
+                  type="button"
+                  onClick={() => void handleAccountSwitch(account.id)}
+                  disabled={isActive}
+                  className={cn(
+                    "flex min-w-0 items-center justify-between gap-4 rounded-2xl border p-4 text-left transition-all disabled:cursor-default",
+                    isActive
+                      ? "border-[#5B45FF]/40 bg-[#5B45FF]/10"
+                      : (isDark ? "border-gray-700 bg-gray-900/50 hover:border-[#5B45FF]/60" : "border-slate-200 bg-slate-50 hover:border-[#5B45FF]/60 hover:bg-white")
+                  )}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold">{account.label || 'WhatsApp Business'}</p>
+                    <p className={cn("mt-1 truncate text-xs", isDark ? "text-slate-400" : "text-slate-500")}>
+                      {account.phoneNumberId} / {account.businessAccountId}
+                    </p>
+                  </div>
+                  <span className={cn(
+                    "shrink-0 rounded-full px-3 py-1 text-[10px] font-semibold uppercase",
+                    isActive ? "bg-[#5B45FF] text-white" : (isDark ? "bg-white/8 text-slate-300" : "bg-white text-slate-500")
+                  )}>
+                    {isActive ? 'Active' : 'Switch'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {isAddingAccount && (
+            <form onSubmit={(event) => void handleAddAccount(event)} className={cn("mt-4 rounded-2xl border p-4", isDark ? "border-gray-700 bg-gray-900/50" : "border-slate-200 bg-slate-50")}>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Account Label</span>
+                  <input name="label" placeholder="Sales WABA" className={cn("w-full rounded-xl border px-3 py-2.5 text-sm outline-none", isDark ? "border-gray-700 bg-gray-950 text-white" : "border-slate-200 bg-white text-slate-900")} />
+                </label>
+                <label className="space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Access Token</span>
+                  <input name="accessToken" required placeholder="EAAG..." className={cn("w-full rounded-xl border px-3 py-2.5 text-sm outline-none", isDark ? "border-gray-700 bg-gray-950 text-white" : "border-slate-200 bg-white text-slate-900")} />
+                </label>
+                <label className="space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Phone Number ID</span>
+                  <input name="phoneNumberId" required placeholder="1234567890" className={cn("w-full rounded-xl border px-3 py-2.5 text-sm outline-none", isDark ? "border-gray-700 bg-gray-950 text-white" : "border-slate-200 bg-white text-slate-900")} />
+                </label>
+                <label className="space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Business Account ID</span>
+                  <input name="businessAccountId" required placeholder="1234567890" className={cn("w-full rounded-xl border px-3 py-2.5 text-sm outline-none", isDark ? "border-gray-700 bg-gray-950 text-white" : "border-slate-200 bg-white text-slate-900")} />
+                </label>
               </div>
-              <select
-                value={targetPhoneId}
-                onChange={(event) => void handleNumberChange(event.target.value)}
-                className={cn(
-                  "min-w-[14rem] rounded-xl border px-3 py-2 text-xs font-semibold outline-none transition-all",
-                  isDark ? "border-gray-700 bg-gray-950 text-white focus:border-[#5B45FF]" : "border-slate-200 bg-white text-slate-900 focus:border-[#5B45FF]"
-                )}
-              >
-                {phoneNumbers.length === 0 && <option value="">No numbers found</option>}
-                {phoneNumbers.map((phone) => (
-                  <option key={phone.phoneId} value={phone.phoneId}>
-                    {phone.displayPhoneNumber || phone.phoneId} ({phone.verifiedName || 'Unverified'})
-                  </option>
-                ))}
-              </select>
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={savingAccount}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5B45FF] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]/20 transition-all hover:bg-[#4b38df] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Save size={16} />
+                  {savingAccount ? 'Connecting...' : 'Connect Account'}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+
+        <div className="grid gap-0 lg:grid-cols-[0.88fr_1.12fr]">
+          <div className={cn("border-b p-5 md:p-7 lg:border-b-0 lg:border-r", isDark ? "border-white/8" : "border-slate-200")}>
+            <p className="text-sm font-bold">Active Phone Number</p>
+            <p className={cn("mt-1 text-xs leading-5", isDark ? "text-slate-400" : "text-slate-500")}>
+              Choose which connected WhatsApp number this workspace should use.
+            </p>
+
+            <select
+              value={targetPhoneId}
+              onChange={(event) => void handleNumberChange(event.target.value)}
+              className={cn(
+                "mt-4 w-full rounded-xl border px-3 py-3 text-sm font-semibold outline-none transition-all",
+                isDark ? "border-gray-700 bg-gray-950 text-white focus:border-[#5B45FF]" : "border-slate-200 bg-white text-slate-900 focus:border-[#5B45FF]"
+              )}
+            >
+              {phoneNumbers.length === 0 && <option value="">No numbers found</option>}
+              {phoneNumbers.map((phone) => (
+                <option key={phone.phoneId} value={phone.phoneId}>
+                  {phone.displayPhoneNumber || phone.phoneId} ({phone.verifiedName || 'Unverified'})
+                </option>
+              ))}
+            </select>
+
+            <div className={cn("mt-5 rounded-2xl border p-4", isDark ? "border-white/8 bg-white/[0.03]" : "border-slate-200 bg-slate-50")}>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Selected Number</p>
+              <p className="mt-2 text-lg font-black tracking-tight">{primaryPhone?.displayPhoneNumber || 'Not available'}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className={cn("rounded-full px-3 py-1 text-[10px] font-semibold", isDark ? "bg-white/8 text-slate-300" : "bg-white text-slate-600")}>
+                  ID: {primaryPhone?.phoneId || targetPhoneId || 'Pending'}
+                </span>
+                <span className={cn("rounded-full px-3 py-1 text-[10px] font-semibold", primaryPhone?.nameStatus === 'APPROVED' ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600")}>
+                  {primaryPhone?.nameStatus || 'Name status unknown'}
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className={cn("rounded-[1.4rem] border p-4", isDark ? "border-gray-700 bg-gray-900/50" : "border-slate-200 bg-slate-50")}>
-            <p className="text-sm font-bold">Business Account</p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="p-5 md:p-7">
+            <div className="flex items-center gap-3">
+              <Smartphone size={18} className="text-[#5B45FF]" />
+              <p className="text-sm font-bold">Live Account Details</p>
+            </div>
+            <div className="mt-5 grid gap-x-5 gap-y-4 sm:grid-cols-2">
               {accountFields.map((field) => (
                 <div key={field.label} className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">{field.label}</p>
-                  <p className="mt-1 truncate text-sm font-semibold">{field.value}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">{field.label}</p>
+                  <p className="mt-1 truncate text-sm font-semibold" title={String(field.value)}>{field.value}</p>
                 </div>
               ))}
             </div>
@@ -9381,144 +9382,15 @@ function ChannelStatusSection({ isDark, currentUserProfile }: { isDark: boolean,
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {statusCards.map((card) => (
-          <div key={card.title} className={cn("rounded-2xl border p-5 md:rounded-3xl", isDark ? "border-gray-800 bg-[#111827]" : "border-gray-200 bg-white shadow-sm")}>
+          <div key={card.title} className={cn("rounded-2xl border p-5", isDark ? "border-gray-800 bg-[#111827]" : "border-slate-200 bg-white shadow-sm")}>
             <div className="flex items-center gap-3">
               {card.icon}
               <p className="text-sm font-bold">{card.title}</p>
             </div>
-            <p className="mt-4 text-2xl font-black tracking-tight">{card.value}</p>
+            <p className="mt-4 truncate text-2xl font-black tracking-tight" title={String(card.value)}>{card.value}</p>
             <p className={cn("mt-2 text-xs leading-5", isDark ? "text-slate-400" : "text-slate-500")}>{card.helper}</p>
           </div>
         ))}
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-2">
-        <div className={cn("rounded-2xl border p-6 md:rounded-3xl md:p-8", isDark ? "border-gray-800 bg-[#111827]" : "border-gray-200 bg-white shadow-sm")}>
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <DatabaseIcon size={20} className="text-[#5B45FF]" />
-              <h3 className="text-lg font-bold">WhatsApp Catalog</h3>
-            </div>
-            {loadingCommerce && <RefreshCw size={16} className="animate-spin text-slate-400" />}
-          </div>
-          <p className={cn("mt-2 text-sm leading-6", isDark ? "text-slate-400" : "text-slate-500")}>
-            Link a Meta catalog so inbox agents can send product messages from this channel.
-          </p>
-
-          <div className="mt-5 grid gap-4">
-            <div className={cn("rounded-xl border p-3", isDark ? "border-gray-700 bg-gray-900/60" : "border-slate-200 bg-slate-50")}>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Catalog ID</p>
-              <input
-                type="text"
-                value={catalogIdInput}
-                onChange={(event) => setCatalogIdInput(event.target.value)}
-                placeholder="Enter Meta catalog ID"
-                className={cn("mt-2 w-full rounded-xl border px-3 py-2 text-xs outline-none", isDark ? "border-gray-700 bg-gray-950 text-white" : "border-slate-200 bg-white text-slate-900")}
-              />
-              <p className="mt-2 text-[11px] text-slate-500">
-                {catalogs.length > 0 ? `${catalogs.length} catalog${catalogs.length === 1 ? '' : 's'} found on this WABA.` : 'No catalogs were returned from this WABA yet.'}
-              </p>
-            </div>
-
-            {catalogs.length > 0 && (
-              <div className="grid gap-2">
-                {catalogs.map((catalog) => (
-                  <button
-                    key={catalog.id}
-                    type="button"
-                    onClick={() => setCatalogIdInput(catalog.id)}
-                    className={cn("rounded-xl border px-3 py-2 text-left transition-all", isDark ? "border-gray-700 bg-gray-900/60 hover:border-[#5B45FF]" : "border-slate-200 bg-slate-50 hover:border-[#5B45FF]")}
-                  >
-                    <p className="text-xs font-semibold">{catalog.name}</p>
-                    <p className="mt-1 text-[10px] text-slate-500">{catalog.id}{catalog.vertical ? ` - ${catalog.vertical}` : ''}</p>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => setCatalogVisible((prev) => !prev)}
-                className={cn(
-                  "flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium transition-all",
-                  catalogVisible
-                    ? "border-[#5B45FF]/40 bg-[#5B45FF]/10 text-[#5B45FF]"
-                    : (isDark ? "border-gray-700 bg-gray-900/60 text-slate-200" : "border-slate-200 bg-white text-slate-600")
-                )}
-              >
-                <span>Catalog Visible</span>
-                <span>{catalogVisible ? 'On' : 'Off'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setCartEnabled((prev) => !prev)}
-                className={cn(
-                  "flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium transition-all",
-                  cartEnabled
-                    ? "border-[#5B45FF]/40 bg-[#5B45FF]/10 text-[#5B45FF]"
-                    : (isDark ? "border-gray-700 bg-gray-900/60 text-slate-200" : "border-slate-200 bg-white text-slate-600")
-                )}
-              >
-                <span>Cart Enabled</span>
-                <span>{cartEnabled ? 'On' : 'Off'}</span>
-              </button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => void handleSaveCommerce()}
-                disabled={savingCommerce || !targetPhoneId}
-                className="inline-flex items-center justify-center rounded-xl bg-[#5B45FF] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#4b38df] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {savingCommerce ? 'Saving...' : 'Save Catalog Connection'}
-              </button>
-              {commerceSettings?.catalogId && (
-                <span className="rounded-full bg-[#5B45FF]/10 px-3 py-1 text-[10px] font-semibold text-[#5B45FF]">
-                  Active catalog: {commerceSettings.catalogId}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className={cn("rounded-2xl border p-6 md:rounded-3xl md:p-8", isDark ? "border-gray-800 bg-[#111827]" : "border-gray-200 bg-white shadow-sm")}>
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <Phone size={20} className="text-[#5B45FF]" />
-              <h3 className="text-lg font-bold">WhatsApp Calls API</h3>
-            </div>
-            {loadingCallingProbe && <RefreshCw size={16} className="animate-spin text-slate-400" />}
-          </div>
-          <p className={cn("mt-2 text-sm leading-6", isDark ? "text-slate-400" : "text-slate-500")}>
-            The dashboard checks live Meta calling capability for the selected phone number before exposing call controls.
-          </p>
-
-          <div className="mt-5 grid gap-4">
-            <div className={cn("rounded-xl border p-4", isDark ? "border-gray-700 bg-gray-900/60" : "border-slate-200 bg-slate-50")}>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Live Meta Status</p>
-              <div className="mt-3 flex items-center gap-2">
-                {callingProbe?.enabled ? <CheckCircle2 size={18} className="text-[#5B45FF]" /> : <AlertCircle size={18} className="text-amber-500" />}
-                <p className={cn("text-sm font-semibold", callingProbe?.enabled ? "text-[#5B45FF]" : "text-amber-500")}>
-                  {callingProbe?.enabled ? 'Ready for permission checks' : (callingProbe?.permissionStatus || 'Unavailable')}
-                </p>
-              </div>
-              <p className="mt-3 text-xs leading-5 text-slate-500">
-                {getCallPermissionMessage(callingProbe)}
-              </p>
-            </div>
-
-            <div className={cn("rounded-xl border p-4", isDark ? "border-gray-700 bg-gray-900/60" : "border-slate-200 bg-slate-50")}>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Display Name Guidance</p>
-              <ul className="mt-3 space-y-2 text-xs leading-5 text-slate-500">
-                <li>Use the same display name as the brand shown on your website.</li>
-                <li>Keep the website live and operational before submitting changes.</li>
-                <li>Add the legal company name in the website footer when possible.</li>
-              </ul>
-            </div>
-          </div>
-        </div>
       </div>
     </motion.div>
   );

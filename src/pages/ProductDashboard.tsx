@@ -33,6 +33,7 @@ import { signOut, updateProfile } from 'firebase/auth';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { cn } from '../lib/utils';
 import { whatsappService } from '../services/whatsappService';
+import { getActiveWhatsAppAccount } from '../lib/whatsappAccounts';
 
 import { Logo } from '../components/Logo';
 
@@ -67,8 +68,8 @@ const plans = [
     name: 'WhatsApp Business One',
     price: 'INR 1',
     cadence: '/year',
-    description: 'Unlock all current tools and automation features with one annual subscription.',
-    highlights: ['WhatsApp Business Inbox', 'CRM access', 'Email tools', 'Analytics', 'Automation features'],
+    description: 'Unlock all current tools with one annual subscription.',
+    highlights: ['WhatsApp Business Inbox', 'CRM access', 'Email tools', 'Analytics'],
     visuals: [
       { label: 'WhatsApp', icon: WhatsAppIcon },
       { label: 'CRM', icon: Users },
@@ -551,7 +552,7 @@ export default function ProductDashboard() {
 
   useEffect(() => {
     const loadWhatsappStatus = async () => {
-      const creds = profileData?.whatsappCredentials;
+      const creds = getActiveWhatsAppAccount(profileData);
       const setupCompleted = Boolean(profileData?.toolSetup?.whatsapp || creds);
 
       if (!unlockedServices.whatsapp || !setupCompleted || !creds) {
