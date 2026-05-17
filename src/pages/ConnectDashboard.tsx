@@ -2739,17 +2739,16 @@ export default function ConnectDashboard() {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed left-0 top-0 h-full w-[var(--app-sidebar-width)] md:[width:var(--connect-sidebar-width)] border-r transition-all duration-300 z-[70] flex flex-col transform md:translate-x-0 backdrop-blur-xl",
-        isDark ? "bg-slate-950/88 border-white/8 shadow-[0_18px_55px_rgba(2,8,23,0.42)]" : "bg-white/88 border-slate-200/80 shadow-[0_24px_60px_rgba(15,23,42,0.06)]",
+        "fixed left-0 top-0 h-full w-[var(--app-sidebar-width)] md:[width:var(--connect-sidebar-width)] border-r transition-all duration-300 z-[70] flex flex-col transform md:translate-x-0 backdrop-blur-2xl",
+        isDark ? "bg-slate-950/92 border-white/8 shadow-[0_18px_55px_rgba(2,8,23,0.42)]" : "bg-white/94 border-slate-200/75 shadow-[18px_0_60px_rgba(15,23,42,0.07)]",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className={cn("p-4 flex items-start justify-between gap-3", isSidebarCollapsed && "md:flex-col md:items-center")}>
+        <div className={cn("px-4 pb-3 pt-4 flex items-center justify-between gap-3", isSidebarCollapsed && "md:flex-col md:items-center")}>
           <div className={cn("min-w-0", isSidebarCollapsed && "md:flex md:w-full md:justify-center")}>
             <div className={cn("flex items-center gap-3", isSidebarCollapsed && "md:justify-center")}>
               <Logo size={44} showText={false} className="shrink-0" />
               <div className={cn("min-w-0", isSidebarCollapsed && "md:hidden")}>
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#5B45FF]">Cloud inbox</p>
-                <h1 className="truncate text-lg font-extrabold tracking-tight">WhatsApp Business Inbox</h1>
+                <h1 className="truncate text-base font-bold tracking-tight">WhatsApp Business</h1>
               </div>
             </div>
           </div>
@@ -2759,8 +2758,8 @@ export default function ConnectDashboard() {
               onClick={() => setIsSidebarCollapsed((prev) => !prev)}
               title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               className={cn(
-                "hidden md:flex h-10 w-10 items-center justify-center rounded-2xl border transition-all",
-                isDark ? "border-white/8 bg-white/5 text-slate-300 hover:bg-white/10" : "border-slate-200 bg-white/80 text-slate-600 hover:bg-white"
+                "hidden md:flex h-9 w-9 items-center justify-center rounded-xl border transition-all hover:scale-[1.03]",
+                isDark ? "border-white/8 bg-white/5 text-slate-300 hover:bg-white/10" : "border-slate-200 bg-slate-50 text-slate-500 hover:border-[#5B45FF]/25 hover:bg-white hover:text-[#5B45FF]"
               )}
             >
               <ChevronRight className={cn("transition-transform", !isSidebarCollapsed && "rotate-180")} size={18} />
@@ -2771,7 +2770,7 @@ export default function ConnectDashboard() {
           </div>
         </div>
 
-        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 no-scrollbar">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3 no-scrollbar">
           <NavItem 
             icon={<MessageSquareText size={20} strokeWidth={2.2} />} 
             label="Team Inbox" 
@@ -2848,11 +2847,11 @@ export default function ConnectDashboard() {
         </nav>
 
         {/* Logout Button */}
-        <div className={cn("p-4 border-t", isDark ? "border-white/8" : "border-slate-200/80")}>
+        <div className={cn("border-t p-3", isDark ? "border-white/8" : "border-slate-200/80")}>
           <div className={cn(
-            "mb-3 flex items-center gap-3 rounded-2xl border px-3 py-3",
+            "mb-2 flex items-center gap-3 rounded-2xl border px-3 py-3",
             isSidebarCollapsed && "md:justify-center md:px-2",
-            isDark ? "border-white/8 bg-white/5" : "border-slate-200 bg-slate-50/80"
+            isDark ? "border-white/8 bg-white/5" : "border-slate-200/85 bg-slate-50/85"
           )}>
             {accountAvatar ? (
               <img src={accountAvatar} alt="Account" className="h-10 w-10 rounded-2xl object-cover border border-white/20" />
@@ -2872,7 +2871,7 @@ export default function ConnectDashboard() {
           <button 
             onClick={requestLogout}
             title="Sign Out"
-            className={cn("w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-red-400 hover:bg-red-500/10 transition-all font-bold text-sm", isSidebarCollapsed && "md:justify-center md:px-0")}
+            className={cn("w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold text-red-500 transition-all hover:bg-red-500/10 hover:text-red-600", isSidebarCollapsed && "md:justify-center md:px-0")}
           >
             <LogOut size={20} />
             <span className={cn(isSidebarCollapsed && "md:hidden")}>Sign Out</span>
@@ -2892,13 +2891,7 @@ export default function ConnectDashboard() {
                 <Filter size={20} />
               </button>
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="app-header-eyebrow text-[10px] font-bold uppercase tracking-[0.24em]">WhatsApp Business Inbox</p>
-                  <span className="app-header-chip rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]">
-                    {tabDetails.title}
-                  </span>
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-2 md:gap-3">
+                <div className="flex flex-wrap items-center gap-2 md:gap-3">
                   <h2 className="app-header-title truncate font-black tracking-tight">
                     {tabDetails.title}
                   </h2>
@@ -4014,11 +4007,10 @@ function InboxSection({
   const [contactTags, setContactTags] = useState("");
   const [savingInfo, setSavingInfo] = useState(false);
   const [showChatList, setShowChatList] = useState(true);
+  const [isContactDetailsCollapsed, setIsContactDetailsCollapsed] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'starred' | 'favorites'>('all');
   const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
-  const [selectedChannel, setSelectedChannel] = useState<'whatsapp' | 'wa_calls'>('whatsapp');
-  const [isChannelMenuOpen, setIsChannelMenuOpen] = useState(false);
   const [showComposerTools, setShowComposerTools] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
@@ -4049,24 +4041,6 @@ function InboxSection({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const composerInputRef = useRef<HTMLInputElement | null>(null);
 
-  const channelOptions = [
-    {
-      id: 'whatsapp' as const,
-      label: 'WhatsApp',
-      icon: <WhatsAppIcon size={18} />,
-      iconFrameClass: '',
-      isAvailable: true
-    },
-    {
-      id: 'wa_calls' as const,
-      label: 'WhatsApp Calls',
-      icon: <WhatsAppCallsIcon size={18} />,
-      iconFrameClass: '',
-      isAvailable: false
-    }
-  ];
-
-  const selectedChannelMeta = channelOptions.find((channel) => channel.id === selectedChannel) || channelOptions[0];
   const approvedTemplates = useMemo(() => templates.filter((template) => template.status === 'APPROVED'), [templates]);
   const approvedTemplatePreviewByBody = useMemo(() => {
     const previewByBody = new Map<string, { templateName: string; templatePreview: TemplatePreviewData }>();
@@ -4149,9 +4123,6 @@ function InboxSection({
   // WebSocket connection for real-time messages is handled by the parent ConnectDashboard
   
   const filteredContacts = useMemo(() => {
-    if (selectedChannel !== 'whatsapp') {
-      return [];
-    }
     const normalizedTargetPhone = normalizePhoneDigits(targetContactPhone || '');
     return [...contacts]
       .sort((a, b) => {
@@ -4200,7 +4171,7 @@ function InboxSection({
 
         return true;
       });
-  }, [contacts, activeFilter, starredIds, favoriteIds, selectedChannel, chatSearch, attributeFilter, countryCodeFilter, dateFromFilter, dateToFilter, timePeriodFilter, targetContactPhone]);
+  }, [contacts, activeFilter, starredIds, favoriteIds, chatSearch, attributeFilter, countryCodeFilter, dateFromFilter, dateToFilter, timePeriodFilter, targetContactPhone]);
 
   const selectedContact = selectedChatId ? contacts.find((contact) => getContactKey(contact) === selectedChatId) || null : null;
   const selectedContactPhone = normalizePhoneDigits(selectedContact?.whatsappNumber || selectedContact?.phone || '');
@@ -4267,7 +4238,7 @@ function InboxSection({
 
   useEffect(() => {
     const normalizedTargetPhone = normalizePhoneDigits(targetContactPhone || '');
-    if (!normalizedTargetPhone || !contacts.length || selectedChannel !== 'whatsapp') {
+    if (!normalizedTargetPhone || !contacts.length) {
       return;
     }
 
@@ -4280,7 +4251,7 @@ function InboxSection({
     if (targetChatId && targetChatId !== selectedChatId) {
       setSelectedChatId(targetChatId);
     }
-  }, [contacts, selectedChannel, selectedChatId, targetContactPhone]);
+  }, [contacts, selectedChatId, targetContactPhone]);
 
   useEffect(() => {
     if (selectedContact) {
@@ -4945,99 +4916,42 @@ function InboxSection({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       className={cn(
-        "connect-inbox-frame rounded-[1.7rem] md:rounded-[2rem] border overflow-hidden flex relative shadow-[0_24px_70px_rgba(15,23,42,0.10)]",
-        isDark ? "border-gray-800 bg-slate-900" : "border-slate-200 bg-white/92 backdrop-blur-xl"
+        "connect-inbox-frame rounded-[1.7rem] md:rounded-[2rem] border overflow-hidden flex relative shadow-[0_24px_70px_rgba(15,23,42,0.08)]",
+        isDark ? "border-gray-800 bg-slate-900" : "border-slate-200/85 bg-white/95 backdrop-blur-xl"
       )}
     >
       {/* Chat List */}
       <div className={cn(
         "absolute inset-0 md:relative md:inset-auto w-full md:w-[clamp(17.5rem,19vw,20rem)] border-r flex flex-col transition-transform duration-300 z-20 backdrop-blur-sm",
-        isDark ? "bg-[#0d1729]/96 border-gray-800" : "bg-white/94 border-slate-200/80",
+        isDark ? "bg-[#0d1729]/96 border-gray-800" : "bg-white/96 border-slate-200/80",
         showChatList ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
-        <div className={cn("p-3.5 border-b space-y-2.5", isDark ? "border-white/8" : "border-slate-200/80")}>
+        <div className={cn("border-b p-4", isDark ? "border-white/8" : "border-slate-200/80")}>
           <div className="relative">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">Channels</p>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-black tracking-tight">Inbox</h3>
+                <p className="mt-0.5 text-[11px] text-slate-500">{filteredContacts.length} conversations</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsNewChatOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[#5B45FF] px-3 py-2 text-[11px] font-bold text-white shadow-sm transition-all hover:bg-[#4b38df]"
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#5B45FF] px-3 text-[11px] font-bold text-white shadow-sm transition-all hover:bg-[#4b38df]"
               >
                 <Plus size={14} />
                 New Chat
               </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsChannelMenuOpen((prev) => !prev)}
-              className={cn(
-                "flex w-full items-center justify-between rounded-2xl border px-3 py-2.5 text-left transition-all",
-                isDark ? "border-gray-700 bg-gray-800/80 hover:bg-gray-800" : "border-gray-200 bg-gray-50 hover:bg-white"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <span className={cn("flex h-8 w-8 items-center justify-center rounded-xl", selectedChannelMeta.iconFrameClass)}>
-                  {selectedChannelMeta.icon}
-                </span>
-                <div>
-                  <p className="text-[13px] font-semibold">{selectedChannelMeta.label}</p>
-                  <p className="text-[11px] text-slate-500">
-                    {selectedChannelMeta.isAvailable ? 'Live now' : 'Coming soon'}
-                  </p>
-                </div>
-              </div>
-              <ChevronDown size={16} className={cn("transition-transform", isChannelMenuOpen && "rotate-180")} />
-            </button>
-
-            {isChannelMenuOpen && (
-              <div className={cn(
-                "absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 rounded-2xl border p-2 shadow-xl",
-                isDark ? "border-gray-700 bg-[#0f172a]" : "border-gray-200 bg-white"
-              )}>
-                {channelOptions.map((channel) => (
-                  <button
-                    key={channel.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedChannel(channel.id);
-                      setIsChannelMenuOpen(false);
-                    }}
-                    className={cn(
-                      "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition-all",
-                      selectedChannel === channel.id
-                        ? (isDark ? "bg-white/10" : "bg-slate-100")
-                        : (isDark ? "hover:bg-white/5" : "hover:bg-slate-50")
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={cn("flex h-8 w-8 items-center justify-center rounded-xl", channel.iconFrameClass)}>
-                        {channel.icon}
-                      </span>
-                      <div>
-                        <p className="text-sm font-semibold">{channel.label}</p>
-                        {!channel.isAvailable && <p className="text-[11px] text-slate-500">Coming soon</p>}
-                      </div>
-                    </div>
-                    {channel.isAvailable ? (
-                      <span className="rounded-full bg-[#5B45FF]/10 px-2 py-1 text-[10px] font-semibold text-[#5B45FF]">Available</span>
-                    ) : (
-                      <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-500">Under development</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
-          <div className="flex items-center gap-2">
-            <div className={cn("flex flex-1 items-center gap-2 p-2 rounded-xl", isDark ? "bg-gray-800" : "bg-gray-100")}>
-            <Search size={18} className="text-gray-500" />
+          <div className="mt-3 flex items-center gap-2">
+            <div className={cn("flex flex-1 items-center gap-2 rounded-xl border px-3 py-2", isDark ? "border-gray-700 bg-gray-800" : "border-slate-200 bg-slate-50")}>
+              <Search size={16} className="text-gray-500" />
               <input
                 type="text"
                 value={chatSearch}
                 onChange={(e) => setChatSearch(e.target.value)}
                 placeholder="Search chats..."
-                className="bg-transparent border-none outline-none text-xs w-full"
+                className="w-full border-none bg-transparent text-xs outline-none"
               />
             </div>
             <button
@@ -5148,7 +5062,7 @@ function InboxSection({
               </motion.div>
             )}
           </AnimatePresence>
-          <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
+          <div className="mt-3 flex gap-1 overflow-x-auto pb-1 no-scrollbar">
             {(['all', 'unread', 'starred', 'favorites'] as const).map((f) => (
               <button
                 key={f}
@@ -5166,21 +5080,9 @@ function InboxSection({
           </div>
         </div>
         <div className="flex-1 overflow-y-auto no-scrollbar">
-          {selectedChannel !== 'whatsapp' && (
-            <div className="p-8 text-center">
-              <div className={cn(
-                "mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl",
-                selectedChannelMeta.iconFrameClass
-              )}>
-                {selectedChannelMeta.icon}
-              </div>
-              <p className="text-sm font-semibold">{selectedChannelMeta.label} is coming soon</p>
-              <p className="mt-2 text-xs text-gray-500">This channel is under development and will appear here once it is ready.</p>
-            </div>
-          )}
           {filteredContacts.length === 0 && (
             <div className="p-8 text-center text-gray-500 text-sm">
-              {selectedChannel === 'whatsapp' ? `No ${activeFilter !== 'all' ? activeFilter : ''} contacts found` : ''}
+              {`No ${activeFilter !== 'all' ? activeFilter : ''} contacts found`}
             </div>
           )}
           {filteredContacts.map((contact: any, idx: number) => {
@@ -5199,10 +5101,10 @@ function InboxSection({
                   setShowChatList(false);
                 }}
                 className={cn(
-                  "w-full p-3.5 flex gap-3 transition-all text-left border-b group",
+                  "group flex w-full gap-3 border-b px-4 py-3.5 text-left transition-all",
                   isDark ? "border-gray-800/50" : "border-gray-100",
                   isSelectedContactRow
-                    ? (isDark ? "bg-[#5B45FF]/10" : "bg-[#5B45FF]/80 text-white") 
+                    ? (isDark ? "bg-[#5B45FF]/10" : "bg-[#5B45FF] text-white") 
                     : (isDark ? "hover:bg-white/5" : "hover:bg-slate-50")
                 )}
               >
@@ -5217,17 +5119,17 @@ function InboxSection({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start">
-                    <h4 className="font-semibold truncate text-[13px]">{contact.fullName || contact.name || contact.whatsappNumber || 'Unknown'}</h4>
+                    <h4 className="truncate text-sm font-bold">{contact.fullName || contact.name || contact.whatsappNumber || 'Unknown'}</h4>
                     <div className="flex items-center gap-1 shrink-0 ml-2">
                       {isFavorite && <Heart size={10} className="text-red-500 fill-red-500" />}
                       {isStarred && <Star size={10} className="text-yellow-500 fill-yellow-500" />}
-                      <span className={cn("text-[9px] md:text-[10px] uppercase", isSelectedContactRow && !isDark ? "text-white/75" : "text-gray-500")}>
+                      <span className={cn("text-[9px] md:text-[10px] uppercase", isSelectedContactRow && !isDark ? "text-white/90" : "text-gray-500")}>
                         {contact.lastMessageTime ? new Date(contact.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                       </span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center mt-1">
-                    <p className={cn("text-[11px] truncate flex-1", isSelectedContactRow && !isDark ? "text-white/75" : "text-gray-400")}>{contactPreviewText || contact.whatsappNumber}</p>
+                    <p className={cn("text-[11px] truncate flex-1", isSelectedContactRow && !isDark ? "text-white/85" : "text-gray-400")}>{contactPreviewText || contact.whatsappNumber}</p>
                     {contact.unreadCount > 0 && (
                       <AnimatePresence initial={false}>
                         <motion.span
@@ -5252,7 +5154,7 @@ function InboxSection({
       <div className={cn("flex-1 flex flex-col relative z-0", isDark ? "bg-[#08111f]/35" : "bg-transparent")}>
         {selectedContact ? (
           <>
-            <div className={cn("p-3 border-b flex justify-between items-center backdrop-blur-sm", isDark ? "border-white/8 bg-[#0b1527]/70" : "border-slate-200/80 bg-white/75")}>
+            <div className={cn("flex items-center justify-between border-b px-4 py-3 backdrop-blur-sm", isDark ? "border-white/8 bg-[#0b1527]/70" : "border-slate-200/80 bg-white/82")}>
               <div className="flex items-center gap-3">
                 <button 
                   onClick={() => setShowChatList(true)}
@@ -5263,18 +5165,18 @@ function InboxSection({
                 <img
                   src={getConversationAvatarUrl(selectedContact)}
                   alt={selectedContact.fullName || selectedContact.name || 'Conversation profile'}
-                  className="w-8 h-8 rounded-full object-cover"
+                  className="h-9 w-9 rounded-full object-cover"
                   referrerPolicy="no-referrer"
                 />
                 <div className="min-w-0">
-                  <h4 className="font-semibold text-[13px] truncate">{selectedContact.fullName || selectedContact.name}</h4>
+                  <h4 className="truncate text-base font-bold leading-tight">{selectedContact.fullName || selectedContact.name}</h4>
                   <p className="text-[10px] text-slate-400">{selectedContact.whatsappNumber || selectedContact.phone || ''}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 md:gap-4 text-gray-400">
+              <div className="flex items-center gap-1.5 text-gray-400">
                 <button 
                   onClick={() => toggleStar(selectedContact.id || selectedContact.whatsappNumber)}
-                  className={cn("p-1 transition-colors", starredIds.has(selectedContact.id || selectedContact.whatsappNumber) ? "text-yellow-500" : "hover:text-white")}
+                  className={cn("rounded-xl p-2 transition-colors", starredIds.has(selectedContact.id || selectedContact.whatsappNumber) ? "text-yellow-500" : "hover:bg-slate-100 hover:text-slate-700")}
                 >
                   <Star size={18} fill={starredIds.has(selectedContact.id || selectedContact.whatsappNumber) ? "currentColor" : "none"} />
                 </button>
@@ -5284,20 +5186,20 @@ function InboxSection({
                   title={selectedContactOnActiveCall ? 'Call already active' : 'Start call'}
                   disabled={!selectedContactPhone || selectedContactOnActiveCall}
                   className={cn(
-                    "p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                    selectedContactOnActiveCall ? "text-[#5B45FF]" : "hover:text-white"
+                    "rounded-xl p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                    selectedContactOnActiveCall ? "text-[#5B45FF]" : "hover:bg-slate-100 hover:text-slate-700"
                   )}
                 >
                   <Phone size={18} />
                 </button>
                 <button 
                   onClick={() => toggleFavorite(selectedContact.id || selectedContact.whatsappNumber)}
-                  className={cn("p-1 transition-colors", favoriteIds.has(selectedContact.id || selectedContact.whatsappNumber) ? "text-red-500" : "hover:text-white")}
+                  className={cn("rounded-xl p-2 transition-colors", favoriteIds.has(selectedContact.id || selectedContact.whatsappNumber) ? "text-red-500" : "hover:bg-slate-100 hover:text-slate-700")}
                 >
                   <Heart size={18} fill={favoriteIds.has(selectedContact.id || selectedContact.whatsappNumber) ? "currentColor" : "none"} />
                 </button>
-              <button className="p-1 hover:text-white"><Search size={18} /></button>
-                <button className="p-1 hover:text-white"><MoreHorizontal size={18} /></button>
+                <button className="rounded-xl p-2 hover:bg-slate-100 hover:text-slate-700"><Search size={18} /></button>
+                <button className="rounded-xl p-2 hover:bg-slate-100 hover:text-slate-700"><MoreHorizontal size={18} /></button>
               </div>
             </div>
             <div 
@@ -5653,7 +5555,7 @@ function InboxSection({
                           )}
                           <div className={cn(
                             "text-[9px] mt-1.5 flex justify-between items-center gap-2",
-                            isFailedMessage ? "text-white/80" : isSentByUs ? (isDark ? "text-[#5B45FF]" : "text-gray-500") : "text-gray-500"
+                            isFailedMessage || isSentByUs ? "text-white/85" : "text-slate-500"
                           )}>
                             <div className="flex items-center gap-2 opacity-70">
                               {isSentByUs && msg.operatorName && <span>Sent by: {msg.operatorName}</span>}
@@ -5677,13 +5579,18 @@ function InboxSection({
                               {isSentByUs && msg.statusString && (
                                 <span className={cn(
                                   "px-1 rounded",
-                                  msg.statusString === 'READ' ? "text-blue-400" : "text-gray-400"
+                                  msg.statusString === 'READ' ? "text-blue-100" : "text-white/75"
                                 )}>
                                   {msg.statusString}
                                 </span>
                               )}
                             </div>
-                            <span>{new Date(msgDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span className={cn(
+                              "rounded-full px-1.5 py-0.5 text-white",
+                              isFailedMessage || isSentByUs ? "bg-white/10" : "bg-slate-700/45"
+                            )}>
+                              {new Date(msgDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
                           </div>
                         </div>
                       </motion.div>
@@ -5988,59 +5895,101 @@ function InboxSection({
 
       {/* Contact Info Pane - Desktop Only */}
       {selectedContact && (
-        <div className={cn("hidden lg:flex w-[clamp(16.5rem,18vw,19.5rem)] min-h-0 border-l flex-col overflow-hidden backdrop-blur-sm", isDark ? "border-white/8 bg-[#08111f]/40" : "border-slate-200/80 bg-white/65")}>
-          <div className="flex-1 min-h-0 overflow-y-auto p-4">
-          <div className="mb-5 rounded-[1.5rem] border p-4 text-center shadow-sm backdrop-blur-sm">
-            <img
-              src={getConversationAvatarUrl(selectedContact)}
-              alt={selectedContact.fullName || selectedContact.name || 'Conversation profile'}
-              className="mx-auto mb-3 h-16 w-16 rounded-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-            <h4 className="font-bold text-base">{selectedContact.fullName || selectedContact.name}</h4>
-            <p className="mt-1 text-xs text-gray-400">{selectedContact.whatsappNumber || selectedContact.phone}</p>
-          </div>
-          
-          <div className="space-y-3">
-            {renderDetailField({
-              id: 'name',
-              label: 'Contact Name',
-              value: contactNameDraft,
-              placeholder: 'Add contact name',
-              onChange: setContactNameDraft
-            })}
-            {renderDetailField({
-              id: 'info',
-              label: 'Contact Information',
-              value: contactInfoDraft,
-              placeholder: 'Add contact phone number',
-              onChange: setContactInfoDraft
-            })}
-            {renderDetailField({
-              id: 'attributes',
-              label: 'Contact Attributes',
-              value: contactAttributesDraft,
-              placeholder: 'plan: premium',
-              multiline: true,
-              onChange: setContactAttributesDraft
-            })}
-            {renderDetailField({
-              id: 'tags',
-              label: 'Contact Tags',
-              value: contactTags,
-              placeholder: 'vip, lead, support',
-              onChange: setContactTags
-            })}
-            {renderDetailField({
-              id: 'notes',
-              label: 'Contact Notes',
-              value: contactNotes,
-              placeholder: 'Add internal notes',
-              multiline: true,
-              onChange: setContactNotes
-            })}
-          </div>
-          </div>
+        <div className={cn(
+          "hidden min-h-0 border-l flex-col overflow-hidden backdrop-blur-sm transition-all duration-300 lg:flex",
+          isContactDetailsCollapsed ? "w-[4.25rem]" : "w-[clamp(16.5rem,18vw,19.5rem)]",
+          isDark ? "border-white/8 bg-[#08111f]/40" : "border-slate-200/80 bg-white/72"
+        )}>
+          {isContactDetailsCollapsed ? (
+            <div className="flex h-full flex-col items-center gap-4 p-3">
+              <button
+                type="button"
+                onClick={() => setIsContactDetailsCollapsed(false)}
+                title="Expand contact details"
+                className={cn("flex h-10 w-10 items-center justify-center rounded-2xl transition-all", isDark ? "bg-white/10 text-slate-200 hover:bg-white/15" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}
+              >
+                <ChevronRight className="rotate-180" size={18} />
+              </button>
+              <img
+                src={getConversationAvatarUrl(selectedContact)}
+                alt={selectedContact.fullName || selectedContact.name || 'Conversation profile'}
+                className="h-10 w-10 rounded-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+              <div className="vertical-rl rotate-180 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400" style={{ writingMode: 'vertical-rl' }}>
+                Details
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className={cn("flex items-center justify-between border-b px-4 py-3", isDark ? "border-white/8" : "border-slate-200/80")}>
+                <div>
+                  <p className="text-sm font-bold">Contact Details</p>
+                  <p className="mt-0.5 text-[11px] text-slate-500">Profile and notes</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsContactDetailsCollapsed(true)}
+                  title="Collapse contact details"
+                  className={cn("flex h-9 w-9 items-center justify-center rounded-xl transition-all", isDark ? "bg-white/10 text-slate-200 hover:bg-white/15" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+              <div className="flex-1 min-h-0 overflow-y-auto p-4">
+                <div className="mb-5 rounded-[1.5rem] border p-4 text-center shadow-sm backdrop-blur-sm">
+                  <img
+                    src={getConversationAvatarUrl(selectedContact)}
+                    alt={selectedContact.fullName || selectedContact.name || 'Conversation profile'}
+                    className="mx-auto mb-3 h-16 w-16 rounded-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                  <h4 className="text-base font-bold">{selectedContact.fullName || selectedContact.name}</h4>
+                  <p className="mt-1 text-xs text-gray-400">{selectedContact.whatsappNumber || selectedContact.phone}</p>
+                </div>
+                
+                <div className="space-y-3">
+                  {renderDetailField({
+                    id: 'name',
+                    label: 'Contact Name',
+                    value: contactNameDraft,
+                    placeholder: 'Add contact name',
+                    onChange: setContactNameDraft
+                  })}
+                  {renderDetailField({
+                    id: 'info',
+                    label: 'Contact Information',
+                    value: contactInfoDraft,
+                    placeholder: 'Add contact phone number',
+                    onChange: setContactInfoDraft
+                  })}
+                  {renderDetailField({
+                    id: 'attributes',
+                    label: 'Contact Attributes',
+                    value: contactAttributesDraft,
+                    placeholder: 'plan: premium',
+                    multiline: true,
+                    onChange: setContactAttributesDraft
+                  })}
+                  {renderDetailField({
+                    id: 'tags',
+                    label: 'Contact Tags',
+                    value: contactTags,
+                    placeholder: 'vip, lead, support',
+                    onChange: setContactTags
+                  })}
+                  {renderDetailField({
+                    id: 'notes',
+                    label: 'Contact Notes',
+                    value: contactNotes,
+                    placeholder: 'Add internal notes',
+                    multiline: true,
+                    onChange: setContactNotes
+                  })}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -10611,22 +10560,26 @@ function NavItem({ icon, label, active, onClick, isDark, collapsed = false }: { 
       onClick={onClick}
       title={collapsed ? label : undefined}
       className={cn(
-        "group flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all font-medium border",
+        "group relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border px-2.5 py-2.5 text-left font-medium transition-all",
         collapsed && "md:justify-center",
         active 
-          ? "border-[#5B45FF]/20 bg-[#5B45FF] text-white shadow-[0_10px_24px_rgba(91,69,255,0.18)]"
-          : (isDark ? "border-transparent text-slate-400 hover:border-white/8 hover:bg-white/6 hover:text-white" : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-100/80 hover:text-slate-950")
+          ? "border-[#5B45FF]/18 bg-[#5B45FF] text-white shadow-[0_14px_30px_rgba(91,69,255,0.2)]"
+          : (isDark ? "border-transparent text-slate-400 hover:border-white/8 hover:bg-white/6 hover:text-white" : "border-transparent text-slate-600 hover:border-slate-200/90 hover:bg-slate-50 hover:text-slate-950")
       )}
     >
       <span className={cn(
-        "flex h-9 w-9 items-center justify-center rounded-xl transition-all",
+        "absolute left-0 top-1/2 h-7 w-1 -translate-y-1/2 rounded-r-full transition-all",
+        active ? "bg-white/80 opacity-100" : "bg-[#5B45FF] opacity-0 group-hover:opacity-35"
+      )} />
+      <span className={cn(
+        "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all",
         active
           ? "bg-white/15 text-white"
-          : (isDark ? "bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-white" : "bg-white text-slate-500 shadow-sm group-hover:text-[#5B45FF]")
+          : (isDark ? "bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-white" : "bg-white text-slate-500 shadow-sm ring-1 ring-slate-200/70 group-hover:text-[#5B45FF] group-hover:ring-[#5B45FF]/20")
       )}>
         {icon}
       </span>
-      <span className={cn("text-sm font-semibold", collapsed && "md:hidden")}>{label}</span>
+      <span className={cn("relative truncate text-[13px] font-semibold", collapsed && "md:hidden")}>{label}</span>
     </button>
   );
 }

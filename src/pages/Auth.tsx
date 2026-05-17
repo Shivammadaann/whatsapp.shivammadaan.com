@@ -77,7 +77,7 @@ export default function Auth() {
           </div>
 
           <div className="relative z-10 mt-auto max-w-[25rem] pb-20 xl:max-w-[29rem]">
-            <h1 className="[font-family:var(--font-body)] text-[3.6rem] font-black leading-[1.04] tracking-tight text-slate-950 xl:text-[4.35rem]">
+            <h1 className="text-[3.6rem] font-black leading-[1.04] tracking-tight text-slate-950 xl:text-[4.35rem]">
               Do more
               <br />
               with
@@ -110,7 +110,7 @@ export default function Auth() {
 
           <div className="flex min-h-[34rem] flex-col rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.08)] sm:p-8">
             <div>
-              <h1 className="[font-family:var(--font-body)] text-2xl font-extrabold tracking-tight text-slate-950">
+              <h1 className="text-2xl font-extrabold tracking-tight text-slate-950">
                 {isLogin ? 'Log in to your workspace' : 'Create your workspace'}
               </h1>
               {inviteWorkspaceName && (

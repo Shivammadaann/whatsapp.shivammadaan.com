@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cause:wght@100..900&family=Comic+Relief:wght@400;700&display=swap");
 @import "tailwindcss";
 
 @theme {
@@ -12,6 +12,7 @@
     --connektly-brand-soft: rgba(91, 69, 255, 0.08);
     --connektly-connect: #5B45FF;
     --connektly-ink: #000000;
+    --font-h1: "Cause", ui-sans-serif, system-ui, sans-serif;
     --font-heading: "Inter", ui-sans-serif, system-ui, sans-serif;
     --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
     --app-gutter: clamp(1.1rem, 0.8rem + 1.2vw, 2.15rem);
@@ -60,6 +61,29 @@
   h2,
   h3,
   h4,
+  h1 *,
+  h2 *,
+  h3 *,
+  h4 *,
+  h1.font-black,
+  h1.font-extrabold,
+  h1.font-bold,
+  h2.font-black,
+  h2.font-extrabold,
+  h2.font-bold,
+  h3.font-black,
+  h3.font-extrabold,
+  h3.font-bold,
+  h4.font-black,
+  h4.font-extrabold,
+  h4.font-bold {
+    font-family: var(--font-h1) !important;
+  }
+
+  .app-header-title {
+    font-family: var(--font-h1);
+  }
+
   h5,
   h6,
   label,
@@ -128,6 +152,47 @@
   select:disabled,
   textarea:disabled {
     cursor: not-allowed;
+  }
+
+  select {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    min-height: 2.5rem;
+    padding-right: 2.65rem !important;
+    border-radius: 1rem !important;
+    border-color: rgba(203, 213, 225, 0.92);
+    background-image:
+      linear-gradient(135deg, rgba(91, 69, 255, 0.12), rgba(91, 69, 255, 0.02)),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%235B45FF' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+    background-position: right 0.85rem center, right 0.85rem center !important;
+    background-repeat: no-repeat !important;
+    background-size: 100% 100%, 1.05rem 1.05rem !important;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    color: inherit;
+  }
+
+  select:hover {
+    border-color: rgba(91, 69, 255, 0.36);
+    box-shadow: 0 14px 30px rgba(91, 69, 255, 0.10);
+  }
+
+  select:focus,
+  select:focus-visible {
+    border-color: rgba(91, 69, 255, 0.72) !important;
+    box-shadow:
+      0 0 0 4px rgba(91, 69, 255, 0.12),
+      0 14px 30px rgba(91, 69, 255, 0.10);
+    outline: none;
+  }
+
+  select:disabled {
+    opacity: 0.6;
+    box-shadow: none;
+  }
+
+  option {
+    background: #ffffff;
+    color: #111827;
   }
 }
 
@@ -318,6 +383,7 @@
 
   .app-header-title {
     color: #111827;
+    font-family: var(--font-h1);
     font-size: clamp(1.2rem, 1.02rem + 0.7vw, 1.6rem);
     line-height: 1.16;
   }
