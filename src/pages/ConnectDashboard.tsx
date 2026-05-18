@@ -7047,7 +7047,6 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                   isDark ? "border-gray-800 bg-slate-900/40" : "border-slate-200 bg-slate-50/85"
                 )}>
                   <div className="mb-5">
-                    <p className="text-xs font-bold uppercase tracking-[0.28em] text-cyan-600">Section 1</p>
                     <h4 className="mt-2 text-xl font-bold tracking-tight">What message do you want to send?</h4>
                     <p className={cn("mt-1 text-sm", isDark ? "text-slate-400" : "text-slate-500")}>
                       Add campaign name and template below
@@ -7091,7 +7090,6 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                   isDark ? "border-gray-800 bg-slate-900/40" : "border-slate-200 bg-slate-50/85"
                 )}>
                   <div className="mb-5">
-                    <p className="text-xs font-bold uppercase tracking-[0.28em] text-cyan-600">Section 2</p>
                     <h4 className="mt-2 text-xl font-bold tracking-tight">Who is your audience?</h4>
                     <p className={cn("mt-1 text-sm", isDark ? "text-slate-400" : "text-slate-500")}>
                       Choose from pre-built segments, imported contacts, or manual selection
@@ -7216,7 +7214,6 @@ function BroadcastSection({ isDark, templates, broadcasts, contacts, isCreateTem
                   isDark ? "border-gray-800 bg-slate-900/40" : "border-slate-200 bg-slate-50/85"
                 )}>
                   <div className="mb-5">
-                    <p className="text-xs font-bold uppercase tracking-[0.28em] text-cyan-600">Section 3</p>
                     <h4 className="mt-2 text-xl font-bold tracking-tight">When do you want to send it?</h4>
                   </div>
 
