@@ -301,13 +301,13 @@
 
   .connect-inbox-frame {
     min-height: 32rem;
-    height: min(58rem, calc(100dvh - 11rem));
+    height: min(58rem, calc(100dvh - 17.5rem));
   }
 
   @media (min-width: 768px) {
     .connect-inbox-frame {
       min-height: 38rem;
-      height: min(64rem, calc(100dvh - 13rem));
+      height: min(64rem, calc(100dvh - 19.5rem));
     }
   }
 

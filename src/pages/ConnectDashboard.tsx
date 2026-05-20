@@ -2381,16 +2381,6 @@ export default function ConnectDashboard() {
     }
   }, []);
 
-  const unreadConversations = useMemo(
-    () => contacts.filter((contact) => (contact.unreadCount || 0) > 0).length,
-    [contacts]
-  );
-
-  const approvedTemplateCount = useMemo(
-    () => templates.filter((template) => template.status === 'APPROVED').length,
-    [templates]
-  );
-
   const tabDetails = useMemo(() => {
     const tabConfig: Record<TabType, { title: string; description: string }> = {
       inbox: { title: 'Inbox', description: 'Reply faster, spot unread conversations, and keep the team aligned on live chats.' },
@@ -2414,44 +2404,7 @@ export default function ConnectDashboard() {
     soundEnabled: currentUserProfile?.notificationSettings?.soundEnabled ?? true,
     browserEnabled: currentUserProfile?.notificationSettings?.browserEnabled ?? true
   };
-  const headerHighlights = useMemo(() => {
-    const highlightMap: Record<TabType, Array<{ label: string; value: string }>> = {
-      inbox: [
-        { label: 'Live chats', value: contacts.length.toLocaleString() },
-        { label: 'Unread', value: unreadConversations.toLocaleString() }
-      ],
-      calls: [
-        { label: 'Connected numbers', value: phoneNumbers.length.toLocaleString() },
-        { label: 'Contacts ready', value: contacts.length.toLocaleString() }
-      ],
-      broadcast: [
-        { label: 'Campaigns', value: broadcasts.length.toLocaleString() },
-        { label: 'Approved templates', value: approvedTemplateCount.toLocaleString() }
-      ],
-      templates: [
-        { label: 'Total templates', value: templates.length.toLocaleString() },
-        { label: 'Approved', value: approvedTemplateCount.toLocaleString() }
-      ],
-      contacts: [
-        { label: 'Stored contacts', value: contacts.length.toLocaleString() },
-        { label: 'Unread', value: unreadConversations.toLocaleString() }
-      ],
-      settings: [
-        { label: 'Workspace', value: 'Configured' },
-        { label: 'Notifications', value: notificationSettings.browserEnabled ? 'Enabled' : 'Muted' }
-      ],
-      profile: [
-        { label: 'Business profile', value: accountInfo?.whatsappName || 'Pending' },
-        { label: 'Phone ID', value: accountInfo?.phoneId ? 'Connected' : 'Pending' }
-      ],
-      channel_status: [
-        { label: 'WhatsApp Business', value: accountInfo?.phoneId || phoneNumbers[0]?.phoneId ? 'Connected' : 'Pending' },
-        { label: 'Active number', value: accountInfo?.displayPhoneNumber || phoneNumbers[0]?.displayPhoneNumber || 'Pending' }
-      ]
-    };
 
-    return highlightMap[activeTab];
-  }, [accountInfo?.phoneId, accountInfo?.status, accountInfo?.whatsappName, activeTab, approvedTemplateCount, broadcasts.length, contacts.length, notificationSettings.browserEnabled, phoneNumbers.length, unreadConversations]);
   const availableCallParticipants = useMemo(() => {
     if (!activeCallSession) return [];
 
@@ -2875,7 +2828,6 @@ export default function ConnectDashboard() {
 
       {/* Main Content */}
       <main className="desktop-main-offset flex-1 app-safe-screen flex flex-col relative z-10">
-        {activeTab !== 'inbox' && (
           <header className="sticky top-0 z-40 px-4 py-4 transition-colors duration-300 md:px-6 xl:px-8">
             <div className="app-header-card app-header-compact flex flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
@@ -2890,15 +2842,6 @@ export default function ConnectDashboard() {
                     <h2 className="app-header-title truncate font-black tracking-tight">
                       {tabDetails.title}
                     </h2>
-                    {headerHighlights.map((item) => (
-                      <div
-                        key={`${item.label}-${item.value}`}
-                        className="app-header-chip hidden rounded-full px-2.5 py-1 text-[10px] font-semibold md:inline-flex"
-                      >
-                        <span className="mr-1.5 opacity-60">{item.label}:</span>
-                        {item.value}
-                      </div>
-                    ))}
                   </div>
                 </div>
               </div>
@@ -2926,7 +2869,6 @@ export default function ConnectDashboard() {
               </div>
             </div>
           </header>
-        )}
 
         <div className={cn("connect-content-pad flex-1", activeTab === 'inbox' && "connect-content-pad-inbox")}>
           <AnimatePresence mode="wait">
@@ -5104,21 +5046,7 @@ function InboxSection({
               </button>
             ))}
           </div>
-          <div className="mt-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#5B45FF] text-white"><MessageSquareText size={17} /></span>
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/12"><WhatsAppIcon size={19} /></span>
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-400 via-pink-500 to-violet-600 text-xs font-black text-white">IG</span>
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500 text-xs font-black text-white">M</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setActiveFilter('all')}
-              className="text-xs font-semibold text-slate-500 transition-colors hover:text-slate-900"
-            >
-              All Channels
-            </button>
-          </div>
+
         </div>
         <div className="flex-1 overflow-y-auto no-scrollbar">
           {filteredContacts.length === 0 && (
@@ -5307,7 +5235,7 @@ function InboxSection({
                         initial={{ opacity: 0, y: 12, scale: 0.97 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         transition={{ duration: 0.22, ease: 'easeOut' }}
-                        className={cn("flex", isSentByUs ? "justify-end" : "justify-start")}
+                        className={cn("flex flex-col", isSentByUs ? "items-end" : "items-start")}
                       >
                         <div className={cn(
                           "max-w-[86%] md:max-w-[72%] rounded-[1.25rem] px-4 py-3 text-[15px] leading-7 shadow-sm",
@@ -5590,45 +5518,38 @@ function InboxSection({
                               <span>{msg.failedReason || 'Failed to send this message.'}</span>
                             </div>
                           )}
-                          <div className={cn(
-                            "text-[9px] mt-1.5 flex justify-between items-center gap-2",
-                            isFailedMessage || isSentByUs ? "text-white/85" : "text-slate-500"
-                          )}>
-                            <div className="flex items-center gap-2 opacity-70">
-                              {isSentByUs && msg.operatorName && <span>Sent by: {msg.operatorName}</span>}
-                              {isTemplateMessage && (
-                                <span className={cn(
-                                "rounded px-1.5 py-0.5 font-bold uppercase tracking-[0.18em]",
-                                isFailedMessage
-                                    ? "bg-white/15 text-white"
-                                    : isSentByUs
-                                      ? (isDark ? "bg-white/15 text-white" : "border border-white/80 bg-white/95 text-[#5B45FF]")
-                                      : "bg-[#5B45FF] text-white"
-                                )}>
-                                  Template
-                                </span>
-                              )}
-                              {isFailedMessage && (
-                                <span className="rounded px-1 text-rose-100">
-                                  FAILED
-                                </span>
-                              )}
-                              {isSentByUs && msg.statusString && (
-                                <span className={cn(
-                                  "px-1 rounded",
-                                  msg.statusString === 'READ' ? "text-blue-100" : "text-white/75"
-                                )}>
-                                  {msg.statusString}
-                                </span>
-                              )}
-                            </div>
-                            <span className={cn(
-                              "rounded-full px-1.5 py-0.5 text-white",
-                              isFailedMessage || isSentByUs ? "bg-white/10" : "bg-slate-700/45"
-                            )}>
-                              {new Date(msgDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
+                        </div>
+                        {/* Outside Metadata Container */}
+                        <div className={cn(
+                          "text-[10px] mt-1.5 flex items-center gap-2 px-2 select-none",
+                          isDark ? "text-slate-500" : "text-slate-400"
+                        )}>
+                          {isSentByUs && msg.operatorName && <span>Sent by: {msg.operatorName}</span>}
+                          {isSentByUs && msg.operatorName && <span className="opacity-40">•</span>}
+                          
+                          <span>
+                            {new Date(msgDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+
+                          {isSentByUs && msg.statusString && (
+                            <>
+                              <span className="opacity-40">•</span>
+                              <span className={cn(
+                                "font-bold",
+                                msg.statusString === 'READ' && (isDark ? "text-cyan-400" : "text-[#2f66e8]"),
+                                msg.statusString === 'FAILED' && "text-rose-500"
+                              )}>
+                                {msg.statusString}
+                              </span>
+                            </>
+                          )}
+
+                          {isFailedMessage && !msg.statusString && (
+                            <>
+                              <span className="opacity-40">•</span>
+                              <span className="text-rose-500 font-bold">FAILED</span>
+                            </>
+                          )}
                         </div>
                       </motion.div>
                     );
@@ -8836,8 +8757,6 @@ function ChannelStatusSection({
   const [targetPhoneId, setTargetPhoneId] = useState<string>(whatsappService.getCredentials().PHONE_NUMBER_ID);
   const [disconnecting, setDisconnecting] = useState(false);
   const [provisioningNumber, setProvisioningNumber] = useState(false);
-  const [isAddingAccount, setIsAddingAccount] = useState(false);
-  const [savingAccount, setSavingAccount] = useState(false);
   const connectedAccounts = getWhatsAppAccounts(currentUserProfile);
   const activeConnectedAccount = getActiveWhatsAppAccount(currentUserProfile);
 
@@ -8929,73 +8848,6 @@ function ChannelStatusSection({
       handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser?.uid}`);
       console.error('Failed to update connected WhatsApp number:', error);
       showAppDialog({ tone: 'error', message: 'Unable to switch the active WhatsApp number right now.' });
-    }
-  };
-
-  const handleAccountSwitch = async (accountId: string) => {
-    const nextAccount = connectedAccounts.find((account) => account.id === accountId);
-    if (!auth.currentUser || !nextAccount) return;
-
-    try {
-      setTargetPhoneId(nextAccount.phoneNumberId);
-      whatsappService.setCredentials(nextAccount.accessToken, nextAccount.phoneNumberId, nextAccount.businessAccountId);
-      await setDoc(doc(db, 'users', auth.currentUser.uid), {
-        activeWhatsappAccountId: nextAccount.id,
-        whatsappCredentials: toLegacyWhatsAppCredentials(nextAccount),
-        whatsappPhoneNumberIds: getWhatsAppPhoneNumberIds(connectedAccounts)
-      }, { merge: true });
-      onAccountChanged?.();
-      showAppDialog({ tone: 'success', message: `Switched to ${nextAccount.label || 'WhatsApp Business account'}.` });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser?.uid}`);
-      console.error('Failed to switch WhatsApp Business account:', error);
-      showAppDialog({ tone: 'error', message: 'Unable to switch WhatsApp Business accounts right now.' });
-    }
-  };
-
-  const handleAddAccount = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!auth.currentUser) return;
-
-    const formData = new FormData(event.currentTarget);
-    const account = normalizeWhatsAppAccount({
-      label: String(formData.get('label') || '').trim() || undefined,
-      accessToken: String(formData.get('accessToken') || '').trim(),
-      phoneNumberId: String(formData.get('phoneNumberId') || '').trim(),
-      businessAccountId: String(formData.get('businessAccountId') || '').trim(),
-      connectedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
-
-    if (!account) {
-      showAppDialog({ tone: 'warning', message: 'Enter the account label, access token, phone number ID, and WhatsApp Business Account ID.' });
-      return;
-    }
-
-    setSavingAccount(true);
-    try {
-      const accounts = upsertWhatsAppAccount(currentUserProfile, account);
-      await setDoc(doc(db, 'users', auth.currentUser.uid), {
-        whatsappAccounts: accounts,
-        activeWhatsappAccountId: account.id,
-        whatsappCredentials: toLegacyWhatsAppCredentials(account),
-        whatsappPhoneNumberIds: getWhatsAppPhoneNumberIds(accounts),
-        toolSetup: {
-          whatsapp: true
-        }
-      }, { merge: true });
-
-      whatsappService.setCredentials(account.accessToken, account.phoneNumberId, account.businessAccountId);
-      setTargetPhoneId(account.phoneNumberId);
-      setIsAddingAccount(false);
-      onAccountChanged?.();
-      showAppDialog({ tone: 'success', message: 'WhatsApp Business account connected.' });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser.uid}`);
-      console.error('Failed to add WhatsApp Business account:', error);
-      showAppDialog({ tone: 'error', message: 'Unable to connect this WhatsApp Business account right now.' });
-    } finally {
-      setSavingAccount(false);
     }
   };
 
@@ -9133,261 +8985,172 @@ function ChannelStatusSection({
     );
   }
 
-  const accountFields = [
-    { label: 'Business Account ID', value: connectedWabaId || 'Not available' },
-    { label: 'Account Name', value: accountName },
-    { label: 'Phone Number ID', value: primaryPhone?.phoneId || targetPhoneId || 'Not available' },
-    { label: 'Display Number', value: primaryPhone?.displayPhoneNumber || 'Not available' },
-    { label: 'Verified Name', value: primaryPhone?.verifiedName || 'Not available' },
-    { label: 'Currency', value: primaryAccount?.currency || 'Not available' }
-  ];
-
-  const statusCards = [
-    {
-      title: 'Connection',
-      icon: <LinkIcon size={18} className="text-slate-400" />,
-      value: primaryPhone?.status || 'DISCONNECTED',
-      helper: primaryPhone?.status === 'CONNECTED'
-        ? 'This number is currently connected and ready for WhatsApp messaging.'
-        : 'If this number should be active, reconnect or review it in Meta Business Manager.'
-    },
-    {
-      title: 'Messaging Limit',
-      icon: <Zap size={18} className="text-slate-400" />,
-      value: messageLimitLabel || 'Unknown',
-      helper: 'Business-initiated conversations allowed in a rolling 24-hour period.'
-    },
-    {
-      title: 'Display Name',
-      icon: <ShieldCheck size={18} className="text-slate-400" />,
-      value: primaryPhone?.nameStatus || 'UNKNOWN',
-      helper: primaryPhone?.verifiedName ? `Current name: ${primaryPhone.verifiedName}` : 'No verified display name returned yet.'
-    },
-    {
-      title: 'Quality Rating',
-      icon: <Activity size={18} className="text-slate-400" />,
-      value: primaryPhone?.qualityRating || primaryPhone?.qualityScore || 'UNKNOWN',
-      helper: 'Meta quality signal based on message performance and user feedback.'
-    }
-  ];
-
   return (
     <motion.div
       key="channel_status"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="mx-auto w-full max-w-6xl space-y-5 md:space-y-6"
+      className="mx-auto w-full max-w-4xl space-y-6"
     >
+      {/* Dropdown Container */}
       <div className={cn(
-        "overflow-hidden rounded-[1.75rem] border",
-        isDark ? "border-gray-800 bg-[#111827]" : "border-slate-200 bg-white shadow-sm"
+        "p-6 rounded-3xl border backdrop-blur-xl shadow-lg transition-all",
+        isDark ? "border-white/8 bg-[#111827]/80" : "border-slate-200/85 bg-white/90 shadow-slate-100"
       )}>
-        <div className={cn("border-b px-5 py-5 md:px-7", isDark ? "border-white/8 bg-white/[0.03]" : "border-slate-200 bg-slate-50/70")}>
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex min-w-0 items-center gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#5B45FF]/10">
-                <WabaIcon className="h-8 w-8" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#5B45FF]">Connection</p>
-                <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <h3 className="text-xl font-black tracking-tight md:text-2xl">WhatsApp Business</h3>
-                  <span className={cn(
-                    "rounded-full px-3 py-1 text-[10px] font-semibold uppercase",
-                    primaryPhone?.status === 'CONNECTED'
-                      ? "bg-emerald-500/10 text-emerald-600"
-                      : "bg-rose-500/10 text-rose-500"
-                  )}>
-                    {primaryPhone?.status || 'Disconnected'}
-                  </span>
-                </div>
-                <p className={cn("mt-2 max-w-2xl text-sm leading-6", isDark ? "text-slate-400" : "text-slate-500")}>
-                  Manage the live WhatsApp Business account connected to this workspace.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              {primaryPhone?.status !== 'CONNECTED' && (
-                <button
-                  type="button"
-                  onClick={() => void handleProvisionNumber()}
-                  disabled={provisioningNumber || !targetPhoneId || !connectedWabaId}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5B45FF] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]/20 transition-all hover:bg-[#4b38df] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <RefreshCw size={16} className={cn(provisioningNumber && "animate-spin")} />
-                  {provisioningNumber ? 'Registering...' : 'Retry Registration'}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => void handleDisconnect()}
-                disabled={disconnecting}
-                className={cn(
-                  "inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold transition-all disabled:cursor-not-allowed disabled:opacity-50",
-                  isDark
-                    ? "border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/15"
-                    : "border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
-                )}
-              >
-                <Trash2 size={16} />
-                {disconnecting ? 'Disconnecting...' : 'Disconnect'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className={cn("border-b p-5 md:p-7", isDark ? "border-white/8" : "border-slate-200")}>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="text-sm font-bold">Connected Accounts</p>
-              <p className={cn("mt-1 text-xs leading-5", isDark ? "text-slate-400" : "text-slate-500")}>
-                Switch between WhatsApp Business accounts inside this same platform login.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsAddingAccount((prev) => !prev)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5B45FF] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]/20 transition-all hover:bg-[#4b38df]"
-            >
-              <Plus size={16} />
-              {isAddingAccount ? 'Close' : 'Add Account'}
-            </button>
-          </div>
-
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {connectedAccounts.map((account) => {
-              const isActive = activeConnectedAccount?.id === account.id;
-              return (
-                <button
-                  key={account.id}
-                  type="button"
-                  onClick={() => void handleAccountSwitch(account.id)}
-                  disabled={isActive}
-                  className={cn(
-                    "flex min-w-0 items-center justify-between gap-4 rounded-2xl border p-4 text-left transition-all disabled:cursor-default",
-                    isActive
-                      ? "border-[#5B45FF]/40 bg-[#5B45FF]/10"
-                      : (isDark ? "border-gray-700 bg-gray-900/50 hover:border-[#5B45FF]/60" : "border-slate-200 bg-slate-50 hover:border-[#5B45FF]/60 hover:bg-white")
-                  )}
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold">{account.label || 'WhatsApp Business'}</p>
-                    <p className={cn("mt-1 truncate text-xs", isDark ? "text-slate-400" : "text-slate-500")}>
-                      {account.phoneNumberId} / {account.businessAccountId}
-                    </p>
-                  </div>
-                  <span className={cn(
-                    "shrink-0 rounded-full px-3 py-1 text-[10px] font-semibold uppercase",
-                    isActive ? "bg-[#5B45FF] text-white" : (isDark ? "bg-white/8 text-slate-300" : "bg-white text-slate-500")
-                  )}>
-                    {isActive ? 'Active' : 'Switch'}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {isAddingAccount && (
-            <form onSubmit={(event) => void handleAddAccount(event)} className={cn("mt-4 rounded-2xl border p-4", isDark ? "border-gray-700 bg-gray-900/50" : "border-slate-200 bg-slate-50")}>
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="space-y-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Account Label</span>
-                  <input name="label" placeholder="Sales WABA" className={cn("w-full rounded-xl border px-3 py-2.5 text-sm outline-none", isDark ? "border-gray-700 bg-gray-950 text-white" : "border-slate-200 bg-white text-slate-900")} />
-                </label>
-                <label className="space-y-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Access Token</span>
-                  <input name="accessToken" required placeholder="EAAG..." className={cn("w-full rounded-xl border px-3 py-2.5 text-sm outline-none", isDark ? "border-gray-700 bg-gray-950 text-white" : "border-slate-200 bg-white text-slate-900")} />
-                </label>
-                <label className="space-y-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Phone Number ID</span>
-                  <input name="phoneNumberId" required placeholder="1234567890" className={cn("w-full rounded-xl border px-3 py-2.5 text-sm outline-none", isDark ? "border-gray-700 bg-gray-950 text-white" : "border-slate-200 bg-white text-slate-900")} />
-                </label>
-                <label className="space-y-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Business Account ID</span>
-                  <input name="businessAccountId" required placeholder="1234567890" className={cn("w-full rounded-xl border px-3 py-2.5 text-sm outline-none", isDark ? "border-gray-700 bg-gray-950 text-white" : "border-slate-200 bg-white text-slate-900")} />
-                </label>
-              </div>
-              <div className="mt-4 flex justify-end">
-                <button
-                  type="submit"
-                  disabled={savingAccount}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5B45FF] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#5B45FF]/20 transition-all hover:bg-[#4b38df] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Save size={16} />
-                  {savingAccount ? 'Connecting...' : 'Connect Account'}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-
-        <div className="grid gap-0 lg:grid-cols-[0.88fr_1.12fr]">
-          <div className={cn("border-b p-5 md:p-7 lg:border-b-0 lg:border-r", isDark ? "border-white/8" : "border-slate-200")}>
-            <p className="text-sm font-bold">Active Phone Number</p>
-            <p className={cn("mt-1 text-xs leading-5", isDark ? "text-slate-400" : "text-slate-500")}>
-              Choose which connected WhatsApp number this workspace should use.
-            </p>
-
-            <select
-              value={targetPhoneId}
-              onChange={(event) => void handleNumberChange(event.target.value)}
-              className={cn(
-                "mt-4 w-full rounded-xl border px-3 py-3 text-sm font-semibold outline-none transition-all",
-                isDark ? "border-gray-700 bg-gray-950 text-white focus:border-[#5B45FF]" : "border-slate-200 bg-white text-slate-900 focus:border-[#5B45FF]"
-              )}
-            >
-              {phoneNumbers.length === 0 && <option value="">No numbers found</option>}
-              {phoneNumbers.map((phone) => (
-                <option key={phone.phoneId} value={phone.phoneId}>
-                  {phone.displayPhoneNumber || phone.phoneId} ({phone.verifiedName || 'Unverified'})
-                </option>
-              ))}
-            </select>
-
-            <div className={cn("mt-5 rounded-2xl border p-4", isDark ? "border-white/8 bg-white/[0.03]" : "border-slate-200 bg-slate-50")}>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Selected Number</p>
-              <p className="mt-2 text-lg font-black tracking-tight">{primaryPhone?.displayPhoneNumber || 'Not available'}</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <span className={cn("rounded-full px-3 py-1 text-[10px] font-semibold", isDark ? "bg-white/8 text-slate-300" : "bg-white text-slate-600")}>
-                  ID: {primaryPhone?.phoneId || targetPhoneId || 'Pending'}
-                </span>
-                <span className={cn("rounded-full px-3 py-1 text-[10px] font-semibold", primaryPhone?.nameStatus === 'APPROVED' ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600")}>
-                  {primaryPhone?.nameStatus || 'Name status unknown'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-5 md:p-7">
-            <div className="flex items-center gap-3">
-              <Smartphone size={18} className="text-[#5B45FF]" />
-              <p className="text-sm font-bold">Live Account Details</p>
-            </div>
-            <div className="mt-5 grid gap-x-5 gap-y-4 sm:grid-cols-2">
-              {accountFields.map((field) => (
-                <div key={field.label} className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">{field.label}</p>
-                  <p className="mt-1 truncate text-sm font-semibold" title={String(field.value)}>{field.value}</p>
-                </div>
-              ))}
-            </div>
+        <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-[#5B45FF] mb-2">
+          Active Phone Number
+        </label>
+        <div className="relative">
+          <select
+            value={targetPhoneId}
+            onChange={(event) => void handleNumberChange(event.target.value)}
+            className={cn(
+              "w-full rounded-2xl border px-4 py-3.5 text-sm font-semibold outline-none transition-all appearance-none cursor-pointer pr-10",
+              isDark 
+                ? "border-gray-800 bg-gray-950 text-white focus:border-[#5B45FF] focus:ring-1 focus:ring-[#5B45FF]/40" 
+                : "border-slate-200 bg-slate-50 text-slate-900 focus:border-[#5B45FF] focus:bg-white focus:ring-1 focus:ring-[#5B45FF]/40"
+            )}
+          >
+            {phoneNumbers.length === 0 && <option value="">No numbers found</option>}
+            {phoneNumbers.map((phone) => (
+              <option key={phone.phoneId} value={phone.phoneId}>
+                {phone.displayPhoneNumber || phone.phoneId} ({phone.verifiedName || 'Unverified'})
+              </option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
+            <ChevronDown size={18} className="text-slate-400" />
           </div>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {statusCards.map((card) => (
-          <div key={card.title} className={cn("rounded-2xl border p-5", isDark ? "border-gray-800 bg-[#111827]" : "border-slate-200 bg-white shadow-sm")}>
-            <div className="flex items-center gap-3">
-              {card.icon}
-              <p className="text-sm font-bold">{card.title}</p>
+      {/* Connected Details Card */}
+      <div className={cn(
+        "overflow-hidden rounded-3xl border backdrop-blur-xl shadow-xl transition-all",
+        isDark ? "border-white/8 bg-[#111827]/80" : "border-slate-200/85 bg-white/90 shadow-slate-200/50"
+      )}>
+        {/* Card Header with Connection and Controls */}
+        <div className={cn(
+          "border-b p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6",
+          isDark ? "border-white/8 bg-white/[0.02]" : "border-slate-200/85 bg-slate-50/50"
+        )}>
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#5B45FF]/10 text-[#5B45FF]">
+              <Smartphone size={28} />
             </div>
-            <p className="mt-4 truncate text-2xl font-black tracking-tight" title={String(card.value)}>{card.value}</p>
-            <p className={cn("mt-2 text-xs leading-5", isDark ? "text-slate-400" : "text-slate-500")}>{card.helper}</p>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-xl font-black tracking-tight leading-none">
+                  {primaryPhone?.verifiedName || accountName}
+                </h3>
+                <span className={cn(
+                  "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                  primaryPhone?.nameStatus === 'APPROVED'
+                    ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
+                    : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                )}>
+                  {primaryPhone?.nameStatus || 'PENDING'}
+                </span>
+              </div>
+              <p className={cn("mt-1 text-sm font-bold tracking-wide", isDark ? "text-slate-400" : "text-slate-500")}>
+                {primaryPhone?.displayPhoneNumber || 'No display number'}
+              </p>
+            </div>
           </div>
-        ))}
+
+          {/* Action Controls */}
+          <div className="flex items-center gap-3">
+            {primaryPhone?.status !== 'CONNECTED' && (
+              <button
+                type="button"
+                onClick={() => void handleProvisionNumber()}
+                disabled={provisioningNumber || !targetPhoneId || !connectedWabaId}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5B45FF] px-4 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-[#5B45FF]/20 transition-all hover:bg-[#4b38df] hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RefreshCw size={14} className={cn(provisioningNumber && "animate-spin")} />
+                {provisioningNumber ? 'Registering...' : 'Retry Registration'}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => void handleDisconnect()}
+              disabled={disconnecting}
+              className={cn(
+                "inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-extrabold transition-all hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50",
+                isDark
+                  ? "border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20"
+                  : "border-rose-200 bg-white text-rose-600 hover:bg-rose-50 hover:border-rose-300"
+              )}
+            >
+              <Trash2 size={14} />
+              {disconnecting ? 'Disconnecting...' : 'Disconnect'}
+            </button>
+          </div>
+        </div>
+
+        {/* Connection Metadata Grid */}
+        <div className="p-6 md:p-8 grid gap-6 sm:grid-cols-3">
+          {/* Verification Status Card */}
+          <div className={cn(
+            "p-5 rounded-2xl border transition-all hover:shadow-md",
+            isDark ? "border-white/5 bg-white/[0.01]" : "border-slate-100 bg-slate-50/30"
+          )}>
+            <div className="flex items-center gap-2.5 mb-3 text-[#5B45FF]">
+              <ShieldCheck size={18} />
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Approval Status</span>
+            </div>
+            <p className="text-lg font-black tracking-tight uppercase">
+              {primaryPhone?.nameStatus || 'UNKNOWN'}
+            </p>
+            <p className={cn("text-[11px] mt-1.5 leading-normal", isDark ? "text-slate-400" : "text-slate-500")}>
+              Approval verification of display name in Meta Manager.
+            </p>
+          </div>
+
+          {/* Messaging Limit Card */}
+          <div className={cn(
+            "p-5 rounded-2xl border transition-all hover:shadow-md",
+            isDark ? "border-white/5 bg-white/[0.01]" : "border-slate-100 bg-slate-50/30"
+          )}>
+            <div className="flex items-center gap-2.5 mb-3 text-[#5B45FF]">
+              <Zap size={18} />
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Messaging Limit</span>
+            </div>
+            <p className="text-lg font-black tracking-tight">
+              {messageLimitLabel || 'Unknown'}
+            </p>
+            <p className={cn("text-[11px] mt-1.5 leading-normal", isDark ? "text-slate-400" : "text-slate-500")}>
+              Business-initiated conversation quota inside rolling 24h.
+            </p>
+          </div>
+
+          {/* Quality Rating Card */}
+          <div className={cn(
+            "p-5 rounded-2xl border transition-all hover:shadow-md",
+            isDark ? "border-white/5 bg-white/[0.01]" : "border-slate-100 bg-slate-50/30"
+          )}>
+            <div className="flex items-center gap-2.5 mb-3 text-[#5B45FF]">
+              <Activity size={18} />
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Quality Rating</span>
+            </div>
+            <p className={cn(
+              "text-lg font-black tracking-tight uppercase",
+              primaryPhone?.qualityRating === 'GREEN' || primaryPhone?.qualityRating === 'HIGH'
+                ? "text-emerald-500"
+                : primaryPhone?.qualityRating === 'YELLOW' || primaryPhone?.qualityRating === 'MEDIUM'
+                ? "text-amber-500"
+                : primaryPhone?.qualityRating === 'RED' || primaryPhone?.qualityRating === 'LOW'
+                ? "text-rose-500"
+                : ""
+            )}>
+              {primaryPhone?.qualityRating || 'UNKNOWN'}
+            </p>
+            <p className={cn("text-[11px] mt-1.5 leading-normal", isDark ? "text-slate-400" : "text-slate-500")}>
+              Meta health status based on user block rate and template flags.
+            </p>
+          </div>
+        </div>
       </div>
     </motion.div>
   );

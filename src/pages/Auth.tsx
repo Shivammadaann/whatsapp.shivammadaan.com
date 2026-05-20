@@ -6,14 +6,13 @@ import {
 } from 'firebase/auth';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
-
-const AUTH_HERO_IMAGE =
-  'https://whatsappbusiness.com/wp-content/uploads/2026/03/518332268_1302889734686700_451188852508781875_n.png.png';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,10 +71,6 @@ export default function Auth() {
         <div className="relative flex min-h-screen w-full origin-center scale-75 flex-col px-14 py-12">
           <img src="/waba.svg" alt="WhatsApp Business" className="h-16 w-16 object-contain" />
 
-          <div className="pointer-events-none absolute right-8 top-14 h-[42rem] w-[38rem] max-w-[48vw] xl:right-14 xl:h-[45rem] xl:w-[42rem]">
-            <img src={AUTH_HERO_IMAGE} alt="" className="h-full w-full object-contain" />
-          </div>
-
           <div className="relative z-10 mt-auto max-w-[25rem] pb-20 xl:max-w-[29rem]">
             <h1 className="text-[3.6rem] font-black leading-[1.04] tracking-tight text-slate-950 xl:text-[4.35rem]">
               Do more
@@ -111,7 +106,7 @@ export default function Auth() {
           <div className="flex min-h-[34rem] flex-col rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.08)] sm:p-8">
             <div>
               <h1 className="text-2xl font-extrabold tracking-tight text-slate-950">
-                {isLogin ? 'Log in to your workspace' : 'Create your workspace'}
+                {isLogin ? 'Login to WhatsApp Business Account' : 'Create your workspace'}
               </h1>
               {inviteWorkspaceName && (
                 <div className="mt-6 rounded-2xl border border-[#5B45FF]/20 bg-[#5B45FF]/8 px-5 py-4 text-sm font-medium text-[#4338ca]">
@@ -149,14 +144,28 @@ export default function Auth() {
                 className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-400 focus:border-[#5B45FF] focus:bg-white focus:ring-4 focus:ring-[#5B45FF]/10"
               />
 
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
-                className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-400 focus:border-[#5B45FF] focus:bg-white focus:ring-4 focus:ring-[#5B45FF]/10"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-4 pr-12 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-400 focus:border-[#5B45FF] focus:bg-white focus:ring-4 focus:ring-[#5B45FF]/10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600 focus:outline-none"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
 
               {error && (
                 <div className="rounded-[1rem] border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
@@ -194,10 +203,6 @@ export default function Auth() {
               {isLogin ? 'Create new account' : 'Log in to existing account'}
             </button>
 
-            <div className="mt-8 flex items-center justify-center gap-1 text-base font-semibold text-slate-500">
-              <span className="[font-family:var(--font-body)] text-lg font-black leading-none text-[#5B45FF]">&infin;</span>
-              <span>Meta</span>
-            </div>
           </div>
         </motion.main>
       </section>
